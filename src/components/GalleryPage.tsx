@@ -125,7 +125,17 @@ export const GalleryPage: React.FC = () => {
                       src={item.imageUrl}
                       alt={item.altText}
                       referrerPolicy="no-referrer"
-                      onError={(e) => { e.currentTarget.src = HERO_IMAGE_URL; }}
+                      onError={(e) => {
+                        // Fallback to static public path instead of replacing every image with HERO_IMAGE_URL
+                        const target = e.currentTarget;
+                        if (!target.dataset.failed) {
+                          target.dataset.failed = 'true';
+                          if (index === 0) target.src = '/images/gallery_drive_1.jpg';
+                          else if (index === 1) target.src = '/images/gallery_drive_2.jpg';
+                          else if (index === 2) target.src = '/images/gallery_drive_3.jpg';
+                          else target.src = '/images/annual_gathering.jpg';
+                        }
+                      }}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-108"
                     />
                     <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
@@ -238,7 +248,16 @@ export const GalleryPage: React.FC = () => {
                   src={activeItem.imageUrl}
                   alt={activeItem.altText}
                   referrerPolicy="no-referrer"
-                  onError={(e) => { e.currentTarget.src = HERO_IMAGE_URL; }}
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    if (!target.dataset.failed) {
+                      target.dataset.failed = 'true';
+                      if (activeIndex === 0) target.src = '/images/gallery_drive_1.jpg';
+                      else if (activeIndex === 1) target.src = '/images/gallery_drive_2.jpg';
+                      else if (activeIndex === 2) target.src = '/images/gallery_drive_3.jpg';
+                      else target.src = '/images/annual_gathering.jpg';
+                    }
+                  }}
                   className="max-h-[44vh] w-auto object-contain rounded-xl shadow-lg"
                 />
               </div>
