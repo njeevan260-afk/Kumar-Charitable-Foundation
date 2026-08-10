@@ -35,7 +35,7 @@ export const ContactPage: React.FC = () => {
         setSubmitted(true);
       } catch (err: any) {
         console.error('Error submitting message:', err);
-        setError(err.message || 'Failed to send message. Please try again.');
+        setError(err.message || err.details || JSON.stringify(err) || 'Failed to send message. Please try again.');
       } finally {
         setIsSubmitting(false);
       }
