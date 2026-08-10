@@ -3,15 +3,6 @@ export const INDUSTRY_MENTORSHIP_IMAGE_FILE = '/images/industry_mentorship.jpg';
 export const SCHOLARSHIP_AWARDED_IMAGE_FILE = '/images/scholarship_awarded.jpg';
 export const ANNUAL_GATHERING_IMAGE_FILE = '/images/annual_gathering.jpg';
 
-export const briefingStudentOrientationImg = '/images/briefing_student_orientation.jpg';
-export const industryMentorshipImg = '/images/industry_mentorship.jpg';
-export const scholarshipAwardedImg = '/images/scholarship_awarded.jpg';
-export const annualGatheringImg = '/images/annual_gathering.jpg';
-export const galleryDrive1Img = '/images/gallery_drive_1.jpg';
-export const galleryDrive2Img = '/images/gallery_drive_2.jpg';
-export const galleryDrive3Img = '/images/gallery_drive_3.jpg';
-export const galleryDrive4Img = '/images/gallery_drive_4.jpg';
-
 export interface Coordinator {
   name: string;
   role: string;
