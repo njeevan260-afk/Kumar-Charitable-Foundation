@@ -133,7 +133,7 @@ export const GalleryPage: React.FC = () => {
                           if (index === 0) target.src = '/images/gallery_drive_1.jpg';
                           else if (index === 1) target.src = '/images/gallery_drive_2.jpg';
                           else if (index === 2) target.src = '/images/gallery_drive_3.jpg';
-                          else target.src = '/images/annual_gathering.jpg';
+                          else target.src = '/images/gallery_drive_4.jpg';
                         }
                       }}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-108"
@@ -255,7 +255,7 @@ export const GalleryPage: React.FC = () => {
                       if (activeIndex === 0) target.src = '/images/gallery_drive_1.jpg';
                       else if (activeIndex === 1) target.src = '/images/gallery_drive_2.jpg';
                       else if (activeIndex === 2) target.src = '/images/gallery_drive_3.jpg';
-                      else target.src = '/images/annual_gathering.jpg';
+                      else target.src = '/images/gallery_drive_4.jpg';
                     }
                   }}
                   className="max-h-[44vh] w-auto object-contain rounded-xl shadow-lg"

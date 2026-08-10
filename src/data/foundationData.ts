@@ -1,10 +1,16 @@
-import briefingStudentOrientationImg from '../assets/images/briefing_student_orientation.jpg';
-import industryMentorshipImg from '../assets/images/industry_mentorship.jpg';
-import scholarshipAwardedImg from '../assets/images/scholarship_awarded.jpg';
-import annualGatheringImg from '../assets/images/annual_gathering.jpg';
-import galleryDrive1Img from '../assets/images/gallery_drive_1.jpg';
-import galleryDrive2Img from '../assets/images/gallery_drive_2.jpg';
-import galleryDrive3Img from '../assets/images/gallery_drive_3.jpg';
+export const BRIEFING_STUDENT_ORIENTATION_IMAGE = '/images/briefing_student_orientation.jpg';
+export const INDUSTRY_MENTORSHIP_IMAGE_FILE = '/images/industry_mentorship.jpg';
+export const SCHOLARSHIP_AWARDED_IMAGE_FILE = '/images/scholarship_awarded.jpg';
+export const ANNUAL_GATHERING_IMAGE_FILE = '/images/annual_gathering.jpg';
+
+export const briefingStudentOrientationImg = '/images/briefing_student_orientation.jpg';
+export const industryMentorshipImg = '/images/industry_mentorship.jpg';
+export const scholarshipAwardedImg = '/images/scholarship_awarded.jpg';
+export const annualGatheringImg = '/images/annual_gathering.jpg';
+export const galleryDrive1Img = '/images/gallery_drive_1.jpg';
+export const galleryDrive2Img = '/images/gallery_drive_2.jpg';
+export const galleryDrive3Img = '/images/gallery_drive_3.jpg';
+export const galleryDrive4Img = '/images/gallery_drive_4.jpg';
 
 export interface Coordinator {
   name: string;
@@ -48,10 +54,10 @@ export const HERO_IMAGE_URL = "https://lh3.googleusercontent.com/aida-public/AB6
 
 export const FOUNDER_IMAGE_URL = HERO_IMAGE_URL;
 
-export const SCHOLARSHIP_AWARDED_IMAGE = galleryDrive1Img;
-export const INDUSTRY_MENTORSHIP_IMAGE = galleryDrive2Img;
-export const LEADERSHIP_ADDRESS_IMAGE = galleryDrive3Img;
-export const ANNUAL_GATHERING_IMAGE = annualGatheringImg;
+export const LEADERSHIP_ADDRESS_IMAGE = '/images/gallery_drive_1.jpg';
+export const INDUSTRY_MENTORSHIP_IMAGE = '/images/gallery_drive_2.jpg';
+export const SCHOLARSHIP_AWARDED_IMAGE = '/images/gallery_drive_3.jpg';
+export const ANNUAL_GATHERING_IMAGE = '/images/gallery_drive_4.jpg';
 
 export const GALLERY_ITEMS: GalleryItem[] = [
   {
