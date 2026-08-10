@@ -1,14 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-
-export interface SavedMessage {
-  id: string;
-  name: string;
-  mobile: string;
-  email: string;
-  message: string;
-  date: string;
-}
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { supabase } from '../lib/supabase';
 
 export const ContactPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -18,78 +10,43 @@ export const ContactPage: React.FC = () => {
     message: '',
   });
   const [submitted, setSubmitted] = useState(false);
-  const [messages, setMessages] = useState<SavedMessage[]>([]);
-  const [showAdminInbox, setShowAdminInbox] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Load existing messages from localStorage
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('kcf_contact_messages');
-      if (stored) {
-        setMessages(JSON.parse(stored));
-      }
-    } catch (e) {
-      console.error('Error loading messages from localStorage:', e);
-    }
-  }, []);
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.name && formData.mobile && formData.email && formData.message) {
-      const newMessage: SavedMessage = {
-        id: Date.now().toString(),
-        name: formData.name.trim(),
-        mobile: formData.mobile.trim(),
-        email: formData.email.trim(),
-        message: formData.message.trim(),
-        date: new Date().toLocaleString('en-IN', {
-          dateStyle: 'medium',
-          timeStyle: 'short',
-        }),
-      };
-
-      const updated = [newMessage, ...messages];
-      setMessages(updated);
+      setIsSubmitting(true);
+      setError(null);
+      
       try {
-        localStorage.setItem('kcf_contact_messages', JSON.stringify(updated));
-      } catch (e) {
-        console.error('Error saving to localStorage:', e);
-      }
+        const { error: submitError } = await supabase
+          .from('contact_messages')
+          .insert([
+            {
+              name: formData.name.trim(),
+              mobile: formData.mobile.trim(),
+              email: formData.email.trim(),
+              message: formData.message.trim()
+            }
+          ]);
 
-      setSubmitted(true);
+        if (submitError) throw submitError;
+        setSubmitted(true);
+      } catch (err: any) {
+        console.error('Error submitting message:', err);
+        setError(err.message || 'Failed to send message. Please try again.');
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
   const handleReset = () => {
     setFormData({ name: '', mobile: '', email: '', message: '' });
     setSubmitted(false);
+    setError(null);
   };
-
-  const handleDeleteMessage = (id: string) => {
-    const updated = messages.filter((m) => m.id !== id);
-    setMessages(updated);
-    try {
-      localStorage.setItem('kcf_contact_messages', JSON.stringify(updated));
-    } catch (e) {
-      console.error('Error deleting from localStorage:', e);
-    }
-  };
-
-  const handleClearAll = () => {
-    if (window.confirm('Are you sure you want to clear all received messages?')) {
-      setMessages([]);
-      localStorage.removeItem('kcf_contact_messages');
-    }
-  };
-
-  const filteredMessages = messages.filter(
-    (m) =>
-      m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.mobile.includes(searchQuery) ||
-      m.message.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   return (
     <div className="w-full bg-[#FFFDF8] text-[#4F4F4F] font-sans pt-20 pb-20">
@@ -140,15 +97,6 @@ export const ContactPage: React.FC = () => {
                 </p>
               </div>
             </div>
-
-            {/* Admin Inbox Toggle Button */}
-            <button
-              onClick={() => setShowAdminInbox(!showAdminInbox)}
-              className="px-4 py-2 bg-[#F8EAD7] hover:bg-[#E8DED0] text-[#3B2A20] text-xs font-semibold rounded-xl border border-[#E8DED0] transition-colors flex items-center gap-2"
-            >
-              <span className="material-symbols-outlined text-base">inbox</span>
-              <span>{showAdminInbox ? 'Hide Messages' : `View Messages (${messages.length})`}</span>
-            </button>
           </div>
 
           {submitted ? (
@@ -174,20 +122,15 @@ export const ContactPage: React.FC = () => {
                 >
                   Send Another Message
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleReset();
-                    setShowAdminInbox(true);
-                  }}
-                  className="px-6 py-2.5 bg-[#F8EAD7] text-[#3B2A20] hover:bg-[#E8DED0] font-medium text-xs rounded-xl transition-colors border border-[#E8DED0]"
-                >
-                  View Saved Inbox ({messages.length})
-                </button>
               </div>
             </motion.div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
+              {error && (
+                <div className="bg-red-50 text-red-700 p-4 rounded-xl text-sm border border-red-200">
+                  {error}
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {/* Full Name */}
                 <div>
@@ -257,120 +200,15 @@ export const ContactPage: React.FC = () => {
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full sm:w-auto px-8 py-3.5 bg-[#2E7D32] hover:bg-[#256628] text-white font-semibold text-sm rounded-xl shadow-xs transition-colors inline-flex items-center justify-center gap-2"
+                disabled={isSubmitting}
+                className="w-full sm:w-auto px-8 py-3.5 bg-[#2E7D32] hover:bg-[#256628] disabled:bg-[#2E7D32]/70 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-xl shadow-xs transition-colors inline-flex items-center justify-center gap-2"
               >
-                <span>Send Message</span>
-                <span className="material-symbols-outlined text-lg">send</span>
+                <span>{isSubmitting ? 'Sending...' : 'Send Message'}</span>
+                {!isSubmitting && <span className="material-symbols-outlined text-lg">send</span>}
               </button>
             </form>
           )}
         </motion.div>
-
-        {/* Local Storage Admin Inbox Viewer Section */}
-        <AnimatePresence>
-          {showAdminInbox && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-              className="bg-[#FFF8EE] p-8 md:p-10 rounded-[24px] border border-[#8B6A4E]/30 shadow-md space-y-6"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#E8DED0] pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#3B2A20] text-white rounded-xl flex items-center justify-center">
-                    <span className="material-symbols-outlined text-xl">all_inbox</span>
-                  </div>
-                  <div>
-                    <h3 className="font-serif text-xl font-bold text-[#3B2A20]">
-                      Received Messages Inbox (Local Storage)
-                    </h3>
-                    <p className="text-xs text-[#6D4C41]">
-                      Showing {filteredMessages.length} of {messages.length} message(s) stored on this device.
-                    </p>
-                  </div>
-                </div>
-
-                {messages.length > 0 && (
-                  <button
-                    onClick={handleClearAll}
-                    className="px-3.5 py-1.5 text-xs text-red-600 hover:text-white hover:bg-red-600 border border-red-200 rounded-lg transition-colors font-medium flex items-center gap-1"
-                  >
-                    <span className="material-symbols-outlined text-base">delete_sweep</span>
-                    <span>Clear All</span>
-                  </button>
-                )}
-              </div>
-
-              {messages.length > 0 && (
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3.5 top-3 text-[#8B6A4E] text-lg">
-                    search
-                  </span>
-                  <input
-                    type="text"
-                    placeholder="Search by name, email, mobile or keyword..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#E8DED0] rounded-xl text-xs text-[#3B2A20] placeholder-[#A09080] focus:outline-none focus:ring-2 focus:ring-[#8B6A4E]"
-                  />
-                </div>
-              )}
-
-              {filteredMessages.length === 0 ? (
-                <div className="text-center py-10 bg-white/50 rounded-2xl border border-dashed border-[#E8DED0]">
-                  <span className="material-symbols-outlined text-4xl text-[#C49A3A] mb-2">mark_email_unread</span>
-                  <p className="text-sm font-semibold text-[#3B2A20]">No messages found</p>
-                  <p className="text-xs text-[#6D4C41] mt-1">
-                    {messages.length === 0
-                      ? 'Submit the contact form above to test receiving messages!'
-                      : 'No messages match your search filter.'}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
-                  {filteredMessages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className="bg-white p-5 rounded-2xl border border-[#E8DED0] shadow-xs space-y-3 relative group"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-2 border-b border-[#F8EAD7] pb-3">
-                        <div>
-                          <h4 className="font-bold text-sm text-[#3B2A20]">{msg.name}</h4>
-                          <div className="flex flex-wrap items-center gap-4 text-xs text-[#6D4C41] mt-1">
-                            <span className="inline-flex items-center gap-1">
-                              <span className="material-symbols-outlined text-sm">mail</span>
-                              {msg.email}
-                            </span>
-                            <span className="inline-flex items-center gap-1">
-                              <span className="material-symbols-outlined text-sm">call</span>
-                              {msg.mobile}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[11px] text-[#A09080] font-medium bg-[#FFFDF8] px-2.5 py-1 rounded-md border border-[#E8DED0]">
-                            {msg.date}
-                          </span>
-                          <button
-                            onClick={() => handleDeleteMessage(msg.id)}
-                            title="Delete message"
-                            className="text-[#A09080] hover:text-red-600 transition-colors p-1"
-                          >
-                            <span className="material-symbols-outlined text-lg">delete</span>
-                          </button>
-                        </div>
-                      </div>
-                      <p className="text-xs text-[#4F4F4F] leading-relaxed whitespace-pre-wrap bg-[#FFFDF8] p-3 rounded-xl border border-[#E8DED0]/60">
-                        {msg.message}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* 2 Cards Grid Section (Address & Hours) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
