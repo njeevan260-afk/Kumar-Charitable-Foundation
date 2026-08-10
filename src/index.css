@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+@theme {
+  --color-warm-ivory: #FFFDF8;
+  --color-soft-cream: #F8EAD7;
+  --color-espresso: #3B2A20;
+  --color-warm-brown: #6D4C41;
+  --color-body-gray: #4F4F4F;
+  --color-gold: #C49A3A;
+  --color-forest-green: #2E7D32;
+  --color-forest-green-hover: #256628;
+  --color-olive: #7A9E5B;
+  --color-border-warm: #E8DED0;
+  --color-card-bg: #FFF8EE;
+  --color-icon-brown: #8B6A4E;
+
+  --font-serif: 'Playfair Display', serif;
+  --font-sans: 'Poppins', sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: #FFFDF8;
+    color: #4F4F4F;
+    font-family: 'Poppins', sans-serif;
+    line-height: 1.8;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Playfair Display', serif;
+    color: #3B2A20;
+    font-weight: 700;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: 'Playfair Display', serif;
+  }
+  .font-body {
+    font-family: 'Poppins', sans-serif;
+  }
+  
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+
