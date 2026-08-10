@@ -1,8 +1,3 @@
-export const BRIEFING_STUDENT_ORIENTATION_IMAGE = '/images/briefing_student_orientation.jpg';
-export const INDUSTRY_MENTORSHIP_IMAGE_FILE = '/images/industry_mentorship.jpg';
-export const SCHOLARSHIP_AWARDED_IMAGE_FILE = '/images/scholarship_awarded.jpg';
-export const ANNUAL_GATHERING_IMAGE_FILE = '/images/annual_gathering.jpg';
-
 export interface Coordinator {
   name: string;
   role: string;
@@ -45,10 +40,10 @@ export const HERO_IMAGE_URL = "https://lh3.googleusercontent.com/aida-public/AB6
 
 export const FOUNDER_IMAGE_URL = HERO_IMAGE_URL;
 
-export const LEADERSHIP_ADDRESS_IMAGE = '/images/briefing_student_orientation.jpg';
-export const INDUSTRY_MENTORSHIP_IMAGE = '/images/industry_mentorship.jpg';
-export const SCHOLARSHIP_AWARDED_IMAGE = '/images/scholarship_awarded.jpg';
-export const ANNUAL_GATHERING_IMAGE = '/images/annual_gathering.jpg';
+export const LEADERSHIP_ADDRESS_IMAGE = 'https://bfinvtuujysbrhtakfya.supabase.co/storage/v1/object/public/gallery-images/800_6702fa5514b1f.jpg.jpeg';
+export const INDUSTRY_MENTORSHIP_IMAGE = 'https://bfinvtuujysbrhtakfya.supabase.co/storage/v1/object/public/gallery-images/800_6702fa3abb6d7.jpg.jpeg';
+export const SCHOLARSHIP_AWARDED_IMAGE = 'https://bfinvtuujysbrhtakfya.supabase.co/storage/v1/object/public/gallery-images/800_66b07c4a58d66.jpg.jpeg';
+export const ANNUAL_GATHERING_IMAGE = 'https://bfinvtuujysbrhtakfya.supabase.co/storage/v1/object/public/gallery-images/2000_6709e129f2e63.jpg.jpeg';
 
 export const GALLERY_ITEMS: GalleryItem[] = [
   {
