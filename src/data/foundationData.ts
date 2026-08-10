@@ -54,10 +54,10 @@ export const HERO_IMAGE_URL = "https://lh3.googleusercontent.com/aida-public/AB6
 
 export const FOUNDER_IMAGE_URL = HERO_IMAGE_URL;
 
-export const LEADERSHIP_ADDRESS_IMAGE = '/images/gallery_drive_1.jpg';
-export const INDUSTRY_MENTORSHIP_IMAGE = '/images/gallery_drive_2.jpg';
-export const SCHOLARSHIP_AWARDED_IMAGE = '/images/gallery_drive_3.jpg';
-export const ANNUAL_GATHERING_IMAGE = '/images/gallery_drive_4.jpg';
+export const LEADERSHIP_ADDRESS_IMAGE = '/images/briefing_student_orientation.jpg';
+export const INDUSTRY_MENTORSHIP_IMAGE = '/images/industry_mentorship.jpg';
+export const SCHOLARSHIP_AWARDED_IMAGE = '/images/scholarship_awarded.jpg';
+export const ANNUAL_GATHERING_IMAGE = '/images/annual_gathering.jpg';
 
 export const GALLERY_ITEMS: GalleryItem[] = [
   {
