@@ -130,10 +130,10 @@ export const GalleryPage: React.FC = () => {
                         const target = e.currentTarget;
                         if (!target.dataset.failed) {
                           target.dataset.failed = 'true';
-                          if (index === 0) target.src = '/images/gallery_drive_1.jpg';
-                          else if (index === 1) target.src = '/images/gallery_drive_2.jpg';
-                          else if (index === 2) target.src = '/images/gallery_drive_3.jpg';
-                          else target.src = '/images/gallery_drive_4.jpg';
+                          if (index === 0) target.src = '/images/briefing_student_orientation.jpg';
+                          else if (index === 1) target.src = '/images/industry_mentorship.jpg';
+                          else if (index === 2) target.src = '/images/scholarship_awarded.jpg';
+                          else target.src = '/images/annual_gathering.jpg';
                         }
                       }}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-108"
@@ -252,10 +252,10 @@ export const GalleryPage: React.FC = () => {
                     const target = e.currentTarget;
                     if (!target.dataset.failed) {
                       target.dataset.failed = 'true';
-                      if (activeIndex === 0) target.src = '/images/gallery_drive_1.jpg';
-                      else if (activeIndex === 1) target.src = '/images/gallery_drive_2.jpg';
-                      else if (activeIndex === 2) target.src = '/images/gallery_drive_3.jpg';
-                      else target.src = '/images/gallery_drive_4.jpg';
+                      if (activeIndex === 0) target.src = '/images/briefing_student_orientation.jpg';
+                      else if (activeIndex === 1) target.src = '/images/industry_mentorship.jpg';
+                      else if (activeIndex === 2) target.src = '/images/scholarship_awarded.jpg';
+                      else target.src = '/images/annual_gathering.jpg';
                     }
                   }}
                   className="max-h-[44vh] w-auto object-contain rounded-xl shadow-lg"
