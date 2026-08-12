@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../supabaseClient';
 
 export const ContactPage: React.FC = () => {
   const [formData, setFormData] = useState({

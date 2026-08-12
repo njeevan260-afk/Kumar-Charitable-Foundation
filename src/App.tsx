@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -11,9 +11,37 @@ import { StudentWorksPage } from './components/StudentWorksPage';
 import { GalleryPage } from './components/GalleryPage';
 import { TestimonialsPage } from './components/TestimonialsPage';
 import { ContactPage } from './components/ContactPage';
+import { LoginSelectionPage } from './components/auth/LoginSelectionPage';
+import { AdminLoginPage } from './components/auth/AdminLoginPage';
+import { StudentLoginPage } from './components/auth/StudentLoginPage';
+import { StudentSignUpPage } from './components/auth/StudentSignUpPage';
+import { ForgotPasswordPage } from './components/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from './components/auth/ResetPasswordPage';
+import { AdminDashboardPage } from './components/auth/AdminDashboardPage';
+import { StudentDashboardPage } from './components/auth/StudentDashboardPage';
+import { supabase } from './supabaseClient';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('home');
+
+  useEffect(() => {
+    // Check for password recovery hash/params
+    supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setActiveTab('reset-password');
+      }
+    });
+
+    // Or checking via URL params directly
+    const hash = window.location.hash;
+    if (hash && hash.includes('type=recovery')) {
+      setActiveTab('reset-password');
+    }
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('type') === 'recovery') {
+      setActiveTab('reset-password');
+    }
+  }, []);
 
   const renderActiveView = () => {
     switch (activeTab) {
@@ -35,6 +63,22 @@ export default function App() {
         return <TestimonialsPage />;
       case 'contact':
         return <ContactPage />;
+      case 'login':
+        return <LoginSelectionPage setActiveTab={setActiveTab} />;
+      case 'admin-login':
+        return <AdminLoginPage setActiveTab={setActiveTab} />;
+      case 'student-login':
+        return <StudentLoginPage setActiveTab={setActiveTab} />;
+      case 'student-signup':
+        return <StudentSignUpPage setActiveTab={setActiveTab} />;
+      case 'forgot-password':
+        return <ForgotPasswordPage setActiveTab={setActiveTab} />;
+      case 'reset-password':
+        return <ResetPasswordPage setActiveTab={setActiveTab} />;
+      case 'admin-dashboard':
+        return <AdminDashboardPage setActiveTab={setActiveTab} />;
+      case 'student-dashboard':
+        return <StudentDashboardPage setActiveTab={setActiveTab} />;
       default:
         return <HomePage setActiveTab={setActiveTab} />;
     }

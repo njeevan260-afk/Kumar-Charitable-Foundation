@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LOGO_URL } from '../data/foundationData';
-import { X } from 'lucide-react';
+import { X, LogIn, User as UserIcon } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 interface HeaderProps {
   activeTab: string;
@@ -11,6 +12,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [isLogoEnlarged, setIsLogoEnlarged] = useState(false);
+  const { user, role, loading } = useAuth();
 
   const holdTimerRef = useRef<any>(null);
   const isHoldingRef = useRef(false);
@@ -109,8 +111,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
           isVisible ? 'translate-y-0' : '-translate-y-full'
         }`}
       >
-        <div className="flex justify-between items-center px-4 md:px-12 lg:px-16 py-3 max-w-7xl mx-auto">
-          <div className="flex items-center gap-4 relative z-20">
+        <div className="flex justify-between items-center gap-8 lg:gap-16 px-4 md:px-12 lg:px-16 py-3 max-w-[90rem] mx-auto">
+          <div className="flex items-center gap-4 relative z-20 pr-4 lg:pr-8">
             <button 
               onClick={handleLogoClick}
               onDoubleClick={handleLogoDoubleClick}
@@ -132,25 +134,61 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
           </div>
 
           {/* Desktop Navigation */}
-          <ul className="hidden lg:flex items-center gap-4 xl:gap-6 text-sm font-medium">
-            {navItems.map((item) => {
-              const isActive = activeTab === item.id;
-              return (
-                <li key={item.id}>
+          <div className="hidden lg:flex items-center gap-4 xl:gap-6">
+            <ul className="flex items-center gap-4 xl:gap-6 text-sm font-medium">
+              {navItems.map((item) => {
+                const isActive = activeTab === item.id;
+                return (
+                  <li key={item.id}>
+                    <button
+                      onClick={() => handleNavClick(item.id)}
+                      className={`transition-all duration-200 py-1.5 px-1 border-b-2 font-sans ${
+                        isActive
+                          ? 'text-[#3B2A20] border-[#C49A3A] font-bold'
+                          : 'text-[#3B2A20]/80 border-transparent hover:text-[#3B2A20] hover:border-[#C49A3A]'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <div className="flex items-center pl-4 border-l border-[#E8DED0]">
+              {!loading && (
+                user ? (
                   <button
-                    onClick={() => handleNavClick(item.id)}
-                    className={`transition-all duration-200 py-1.5 px-1 border-b-2 font-sans ${
-                      isActive
-                        ? 'text-[#3B2A20] border-[#C49A3A] font-bold'
-                        : 'text-[#3B2A20]/80 border-transparent hover:text-[#3B2A20] hover:border-[#C49A3A]'
+                    onClick={() => {
+                      if (role === 'admin') handleNavClick('admin-dashboard');
+                      else if (role === 'student') handleNavClick('student-dashboard');
+                      else handleNavClick('login');
+                    }}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      activeTab === 'admin-dashboard' || activeTab === 'student-dashboard'
+                        ? 'bg-[#1E3A8A] text-white'
+                        : 'bg-white text-[#1E3A8A] border border-[#1E3A8A] hover:bg-[#1E3A8A] hover:text-white'
                     }`}
                   >
-                    {item.label}
+                    <UserIcon className="w-4 h-4" />
+                    Dashboard
                   </button>
-                </li>
-              );
-            })}
-          </ul>
+                ) : (
+                  <button
+                    onClick={() => handleNavClick('login')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      activeTab === 'login'
+                        ? 'bg-[#1E3A8A] text-white'
+                        : 'bg-white text-[#1E3A8A] border border-[#1E3A8A] hover:bg-[#1E3A8A] hover:text-white'
+                    }`}
+                  >
+                    <LogIn className="w-4 h-4" />
+                    Login
+                  </button>
+                )
+              )}
+            </div>
+          </div>
 
           {/* Mobile Menu Toggle */}
           <button
@@ -183,6 +221,41 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
                 </button>
               );
             })}
+            
+            {!loading && (
+              <div className="mt-2 pt-4 border-t border-[#E8DED0]">
+                {user ? (
+                  <button
+                    onClick={() => {
+                      if (role === 'admin') handleNavClick('admin-dashboard');
+                      else if (role === 'student') handleNavClick('student-dashboard');
+                      else handleNavClick('login');
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`flex items-center gap-2 w-full text-left py-2.5 px-4 rounded-md transition-colors font-sans text-sm ${
+                      activeTab === 'admin-dashboard' || activeTab === 'student-dashboard'
+                        ? 'bg-[#1E3A8A] text-white font-bold'
+                        : 'text-[#1E3A8A] hover:bg-[#F3F4F6] font-medium'
+                    }`}
+                  >
+                    <UserIcon className="w-5 h-5" />
+                    Dashboard
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleNavClick('login')}
+                    className={`flex items-center gap-2 w-full text-left py-2.5 px-4 rounded-md transition-colors font-sans text-sm ${
+                      activeTab === 'login'
+                        ? 'bg-[#1E3A8A] text-white font-bold'
+                        : 'text-[#1E3A8A] hover:bg-[#F3F4F6] font-medium'
+                    }`}
+                  >
+                    <LogIn className="w-5 h-5" />
+                    Login
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
       </header>
