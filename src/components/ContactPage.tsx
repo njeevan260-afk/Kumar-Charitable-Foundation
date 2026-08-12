@@ -141,7 +141,7 @@ export const ContactPage: React.FC = () => {
                     id="contact-name"
                     type="text"
                     required
-                    placeholder="e.g. Rahul Sharma"
+                    placeholder="Full Name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full px-4 py-3 bg-white border border-[#E8DED0] rounded-xl text-sm text-[#3B2A20] placeholder-[#A09080] focus:outline-none focus:ring-2 focus:ring-[#8B6A4E] focus:border-transparent transition-all"
@@ -157,7 +157,7 @@ export const ContactPage: React.FC = () => {
                     id="contact-mobile"
                     type="tel"
                     required
-                    placeholder="e.g. +91 98765 43210"
+                    placeholder="Mobile Number"
                     value={formData.mobile}
                     onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
                     className="w-full px-4 py-3 bg-white border border-[#E8DED0] rounded-xl text-sm text-[#3B2A20] placeholder-[#A09080] focus:outline-none focus:ring-2 focus:ring-[#8B6A4E] focus:border-transparent transition-all"
@@ -174,7 +174,7 @@ export const ContactPage: React.FC = () => {
                   id="contact-email"
                   type="email"
                   required
-                  placeholder="e.g. rahul.sharma@example.com"
+                  placeholder="Email Address"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="w-full px-4 py-3 bg-white border border-[#E8DED0] rounded-xl text-sm text-[#3B2A20] placeholder-[#A09080] focus:outline-none focus:ring-2 focus:ring-[#8B6A4E] focus:border-transparent transition-all"
