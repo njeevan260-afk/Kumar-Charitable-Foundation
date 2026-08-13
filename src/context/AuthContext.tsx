@@ -5,6 +5,7 @@ import { supabase } from '../supabaseClient';
 export interface UserProfile {
   id: string;
   full_name: string | null;
+  email?: string | null;
   role: 'admin' | 'student';
 }
 
@@ -15,6 +16,7 @@ interface AuthContextType {
   role: 'admin' | 'student' | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -24,6 +26,7 @@ const AuthContext = createContext<AuthContextType>({
   role: null,
   loading: true,
   signOut: async () => {},
+  refreshProfile: async () => {},
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -33,25 +36,66 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [role, setRole] = useState<'admin' | 'student' | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, currentUser?: User | null) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, full_name, email, role')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
-      if (data && !error) {
+      if (data && data.role) {
         setProfile(data);
         setRole(data.role);
-      } else {
-        // Fallback for development if the table doesn't exist yet
-        setProfile({ id: userId, full_name: null, role: 'student' });
-        setRole('student');
+        return;
+      }
+
+      // Check user metadata or app metadata
+      const metaRole = (currentUser?.user_metadata?.role || currentUser?.app_metadata?.role) as 'admin' | 'student' | undefined;
+      const metaName = currentUser?.user_metadata?.full_name || currentUser?.user_metadata?.name || null;
+      const metaEmail = currentUser?.email || null;
+      const finalRole: 'admin' | 'student' = metaRole === 'admin' ? 'admin' : 'student';
+
+      const userProfile: UserProfile = {
+        id: userId,
+        full_name: metaName,
+        email: metaEmail,
+        role: finalRole,
+      };
+
+      setProfile(userProfile);
+      setRole(finalRole);
+
+      // Proactively create/upsert profile row into profiles table if missing
+      try {
+        await supabase.from('profiles').upsert(
+          {
+            id: userId,
+            full_name: metaName,
+            email: metaEmail,
+            role: finalRole,
+          },
+          { onConflict: 'id' }
+        );
+      } catch (upsertErr) {
+        console.warn('Could not auto-create profile row in profiles table:', upsertErr);
       }
     } catch (err) {
-      setProfile({ id: userId, full_name: null, role: 'student' });
-      setRole('student');
+      const metaRole = (currentUser?.user_metadata?.role || currentUser?.app_metadata?.role) as 'admin' | 'student' | undefined;
+      const fallbackRole: 'admin' | 'student' = metaRole === 'admin' ? 'admin' : 'student';
+      setProfile({
+        id: userId,
+        full_name: currentUser?.user_metadata?.full_name || null,
+        email: currentUser?.email || null,
+        role: fallbackRole,
+      });
+      setRole(fallbackRole);
+    }
+  };
+
+  const refreshProfile = async () => {
+    if (user) {
+      await fetchProfile(user.id, user);
     }
   };
 
@@ -61,7 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id).then(() => setLoading(false));
+        fetchProfile(session.user.id, session.user).then(() => setLoading(false));
       } else {
         setLoading(false);
       }
@@ -75,7 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
       if (session?.user) {
         setLoading(true);
-        await fetchProfile(session.user.id);
+        await fetchProfile(session.user.id, session.user);
       } else {
         setProfile(null);
         setRole(null);
@@ -91,7 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, role, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, role, loading, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

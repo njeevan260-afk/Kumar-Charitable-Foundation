@@ -22,7 +22,6 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
     { id: 'about', label: 'About Us' },
     { id: 'services', label: 'Services' },
     { id: 'workflow', label: 'Scholarship Workflow' },
-    { id: 'student-info', label: 'Student Information' },
     { id: 'student-works', label: 'Student Works' },
     { id: 'gallery', label: 'Gallery' },
     { id: 'testimonials', label: 'Testimonials' },
@@ -111,51 +110,57 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
           isVisible ? 'translate-y-0' : '-translate-y-full'
         }`}
       >
-        <div className="flex justify-between items-center gap-8 lg:gap-16 px-4 md:px-12 lg:px-16 py-3 max-w-[90rem] mx-auto">
-          <div className="flex items-center gap-4 relative z-20 pr-4 lg:pr-8">
-            <button 
-              onClick={handleLogoClick}
-              onDoubleClick={handleLogoDoubleClick}
-              onMouseDown={handleLogoPressStart}
-              onMouseUp={handleLogoPressEnd}
-              onMouseLeave={handleLogoPressEnd}
-              onTouchStart={handleLogoPressStart}
-              onTouchEnd={handleLogoPressEnd}
-              onTouchCancel={handleLogoPressEnd}
-              className="focus:outline-none flex items-center justify-center group bg-white p-1.5 sm:p-2 rounded-full shadow-xl border-2 border-[#C49A3A] -mb-6 sm:-mb-8 md:-mb-10 transition-all duration-300 hover:shadow-2xl hover:scale-105 animate-float cursor-pointer w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 overflow-hidden select-none"
-              title={activeTab === 'home' ? "Double-click or press and hold to enlarge logo" : "Kumar Charitable Foundation - Home"}
-            >
-              <img 
-                alt="Kumar Charitable Foundation Logo" 
-                className="w-full h-full object-contain rounded-full transition-transform duration-300 group-hover:scale-110 pointer-events-none" 
-                src={LOGO_URL} 
-              />
-            </button>
+        <div className="flex items-center justify-between px-4 md:px-8 lg:px-12 py-3 max-w-[90rem] mx-auto w-full">
+          <div className="flex items-center flex-1">
+            {/* Logo */}
+            <div className="relative z-20 mr-8 lg:mr-12 flex-shrink-0">
+              <button 
+                onClick={handleLogoClick}
+                onDoubleClick={handleLogoDoubleClick}
+                onMouseDown={handleLogoPressStart}
+                onMouseUp={handleLogoPressEnd}
+                onMouseLeave={handleLogoPressEnd}
+                onTouchStart={handleLogoPressStart}
+                onTouchEnd={handleLogoPressEnd}
+                onTouchCancel={handleLogoPressEnd}
+                className="focus:outline-none flex items-center justify-center group bg-white p-1.5 sm:p-2 rounded-full shadow-xl border-2 border-[#C49A3A] -mb-6 sm:-mb-8 md:-mb-10 transition-all duration-300 hover:shadow-2xl hover:scale-105 animate-float cursor-pointer w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 overflow-hidden select-none"
+                title={activeTab === 'home' ? "Double-click or press and hold to enlarge logo" : "Kumar Charitable Foundation - Home"}
+              >
+                <img 
+                  alt="Kumar Charitable Foundation Logo" 
+                  className="w-full h-full object-contain rounded-full transition-transform duration-300 group-hover:scale-110 pointer-events-none" 
+                  src={LOGO_URL} 
+                />
+              </button>
+            </div>
+
+            {/* Desktop Navigation Links */}
+            <nav className="hidden lg:block overflow-x-auto hide-scrollbar">
+              <ul className="flex items-center gap-4 xl:gap-7 text-sm font-medium">
+                {navItems.map((item) => {
+                  const isActive = activeTab === item.id;
+                  return (
+                    <li key={item.id}>
+                      <button
+                        onClick={() => handleNavClick(item.id)}
+                        className={`whitespace-nowrap transition-all duration-200 py-1.5 px-1 border-b-2 font-sans ${
+                          isActive
+                            ? 'text-[#3B2A20] border-[#C49A3A] font-bold'
+                            : 'text-[#3B2A20]/80 border-transparent hover:text-[#3B2A20] hover:border-[#C49A3A]'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-4 xl:gap-6">
-            <ul className="flex items-center gap-4 xl:gap-6 text-sm font-medium">
-              {navItems.map((item) => {
-                const isActive = activeTab === item.id;
-                return (
-                  <li key={item.id}>
-                    <button
-                      onClick={() => handleNavClick(item.id)}
-                      className={`transition-all duration-200 py-1.5 px-1 border-b-2 font-sans ${
-                        isActive
-                          ? 'text-[#3B2A20] border-[#C49A3A] font-bold'
-                          : 'text-[#3B2A20]/80 border-transparent hover:text-[#3B2A20] hover:border-[#C49A3A]'
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-
-            <div className="flex items-center pl-4 border-l border-[#E8DED0]">
+          {/* Desktop Login & Mobile Toggle */}
+          <div className="flex items-center gap-4">
+            <div className="hidden lg:flex items-center pl-4 xl:pl-6 border-l border-[#E8DED0]">
               {!loading && (
                 user ? (
                   <button
@@ -164,7 +169,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
                       else if (role === 'student') handleNavClick('student-dashboard');
                       else handleNavClick('login');
                     }}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    className={`whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
                       activeTab === 'admin-dashboard' || activeTab === 'student-dashboard'
                         ? 'bg-[#1E3A8A] text-white'
                         : 'bg-white text-[#1E3A8A] border border-[#1E3A8A] hover:bg-[#1E3A8A] hover:text-white'
@@ -176,7 +181,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
                 ) : (
                   <button
                     onClick={() => handleNavClick('login')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    className={`whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
                       activeTab === 'login'
                         ? 'bg-[#1E3A8A] text-white'
                         : 'bg-white text-[#1E3A8A] border border-[#1E3A8A] hover:bg-[#1E3A8A] hover:text-white'
@@ -188,18 +193,18 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
                 )
               )}
             </div>
-          </div>
 
-          {/* Mobile Menu Toggle */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden text-[#3B2A20] p-2 focus:outline-none"
-            aria-label="Toggle navigation menu"
-          >
-            <span className="material-symbols-outlined text-2xl">
-              {mobileMenuOpen ? 'close' : 'menu'}
-            </span>
-          </button>
+            {/* Mobile Menu Toggle */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden text-[#3B2A20] p-2 focus:outline-none"
+              aria-label="Toggle navigation menu"
+            >
+              <span className="material-symbols-outlined text-2xl">
+                {mobileMenuOpen ? 'close' : 'menu'}
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu Panel */}

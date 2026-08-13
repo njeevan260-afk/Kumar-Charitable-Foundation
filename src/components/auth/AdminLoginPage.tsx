@@ -20,14 +20,63 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ setActiveTab }) 
     setError(null);
 
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        if (authError.message.toLowerCase().includes('email not confirmed')) {
+          throw new Error('Check your email and confirm your account before logging in.');
+        }
+        throw authError;
+      }
 
-      setActiveTab('home');
+      if (!authData?.session || !authData?.user) {
+        throw new Error('Check your email and confirm your account before logging in.');
+      }
+
+      // Check role directly from profiles table
+      let userRole: string | null = null;
+      try {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('id, full_name, email, role')
+          .eq('id', authData.user.id)
+          .maybeSingle();
+
+        if (profileData && profileData.role) {
+          userRole = profileData.role;
+        }
+      } catch (err) {
+        console.warn('Profiles table check skipped:', err);
+      }
+
+      if (!userRole) {
+        userRole = authData.user.user_metadata?.role || authData.user.app_metadata?.role || null;
+      }
+
+      // If this account is explicitly registered as a student
+      if (userRole === 'student') {
+        await supabase.auth.signOut();
+        throw new Error('Access denied. This account does not have administrator privileges. Please sign in via the Student Login.');
+      }
+
+      // If no profile exists yet in the database, ensure it is created as admin
+      if (!userRole) {
+        try {
+          await supabase.from('profiles').upsert({
+            id: authData.user.id,
+            email: authData.user.email,
+            full_name: authData.user.user_metadata?.full_name || 'Admin',
+            role: 'admin',
+          });
+        } catch (e) {
+          // ignore if table doesn't allow direct insert
+        }
+      }
+
+      setActiveTab('admin-dashboard');
     } catch (err: any) {
       setError(err.message || 'Failed to login.');
     } finally {

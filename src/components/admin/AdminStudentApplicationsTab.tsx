@@ -13,11 +13,11 @@ import {
   ArrowLeft,
   ChevronRight
 } from 'lucide-react';
-import { STUDENT_LIST } from '../data/foundationData';
+import { STUDENT_LIST } from '../../data/foundationData';
 
 type CategoryType = 'PUC' | 'Degree';
 
-export const StudentInfoPage: React.FC = () => {
+export const AdminStudentApplicationsTab: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<CategoryType | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -43,8 +43,8 @@ export const StudentInfoPage: React.FC = () => {
   });
 
   return (
-    <div className="w-full bg-[#FFFDF9] text-[#4F4F4F] font-sans py-12 md:py-16 min-h-[85vh]">
-      <div className="max-w-[1200px] mx-auto px-6 md:px-12">
+    <div className="w-full animate-fade-in">
+      <div className="w-full">
         <AnimatePresence mode="wait">
           {/* MAIN VIEW: ONLY THE TWO CATEGORY BLOCKS */}
           {!selectedCategory ? (
@@ -58,7 +58,7 @@ export const StudentInfoPage: React.FC = () => {
               {/* Page Header */}
               <div className="text-center mb-12">
                 <h1 className="font-serif text-3xl md:text-5xl text-[#3B2A20] font-bold tracking-tight mb-3">
-                  Student Information
+                  Student Applications
                 </h1>
                 <p className="font-sans italic text-sm md:text-base text-[#6D4C41] max-w-2xl mx-auto leading-relaxed">
                   Select an academic category below to view supported students and their application details.
@@ -77,7 +77,7 @@ export const StudentInfoPage: React.FC = () => {
                     <div className="p-1.5 rounded-lg bg-[#F8EAD7] text-[#3B2A20] group-hover:bg-white/20">
                       <BookOpen className="w-4 h-4" />
                     </div>
-                    <span>1st PUC Student Information</span>
+                    <span>1st PUC Student Applications</span>
                     <ExternalLink className="w-3.5 h-3.5 opacity-60" />
                   </motion.a>
 
@@ -92,7 +92,7 @@ export const StudentInfoPage: React.FC = () => {
                     <div className="p-1.5 rounded-lg bg-[#F8EAD7] text-[#3B2A20] group-hover:bg-white/20">
                       <BookOpen className="w-4 h-4" />
                     </div>
-                    <span>2nd PUC Student Information</span>
+                    <span>2nd PUC Student Applications</span>
                     <ExternalLink className="w-3.5 h-3.5 opacity-60" />
                   </motion.a>
                 </div>

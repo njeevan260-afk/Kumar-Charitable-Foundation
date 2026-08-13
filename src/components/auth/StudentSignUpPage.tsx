@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { supabase } from '../../supabaseClient';
-import { Mail, Lock, User, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, User, Loader2, AlertCircle } from 'lucide-react';
 import { LOGO_URL } from '../../data/foundationData';
 
 interface StudentSignUpPageProps {
-  setActiveTab: (tab: string) => void;
+  setActiveTab: (tab: string, state?: { email?: string; message?: string | null }) => void;
 }
 
 export const StudentSignUpPage: React.FC<StudentSignUpPageProps> = ({ setActiveTab }) => {
@@ -14,13 +14,11 @@ export const StudentSignUpPage: React.FC<StudentSignUpPageProps> = ({ setActiveT
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setSuccess(false);
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
@@ -35,21 +33,45 @@ export const StudentSignUpPage: React.FC<StudentSignUpPageProps> = ({ setActiveT
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: window.location.origin,
           data: {
             full_name: fullName,
-            role: 'student', // Secure role enforcement happens in DB via triggers/RLS, this is just metadata for UI
+            role: 'student',
           },
         },
       });
 
       if (error) throw error;
-      
-      setSuccess(true);
+
+      // If user ID was returned, proactively ensure profile row is created
+      if (data?.user?.id) {
+        try {
+          await supabase.from('profiles').upsert(
+            {
+              id: data.user.id,
+              full_name: fullName,
+              email: email,
+              role: 'student',
+            },
+            { onConflict: 'id' }
+          );
+        } catch (profileErr) {
+          console.warn('Profile creation during signup notice:', profileErr);
+        }
+      }
+
+      // Ensure any temporary session is signed out so user is not auto-logged in
+      await supabase.auth.signOut();
+
+      // Redirect to the Sign In page with email prefilled and success message
+      setActiveTab('student-login', {
+        email,
+        message: 'Your account has been created. Please check your email and verify your address before logging in.',
+      });
     } catch (err: any) {
       setError(err.message || 'Failed to sign up.');
     } finally {
@@ -73,28 +95,6 @@ export const StudentSignUpPage: React.FC<StudentSignUpPageProps> = ({ setActiveT
       setLoading(false);
     }
   };
-
-  if (success) {
-    return (
-      <div className="w-full max-w-md mx-auto px-6 py-16 md:py-24">
-        <div className="bg-white p-8 rounded-2xl shadow-xl border border-[#E8DED0] text-center">
-          <div className="mx-auto w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center mb-6">
-            <CheckCircle2 className="w-8 h-8" />
-          </div>
-          <h2 className="text-2xl font-serif text-[#1F2937] mb-4 font-bold">Registration Successful</h2>
-          <p className="text-[#4F4F4F] text-sm mb-8">
-            Your account has been created successfully. Please check your email to verify your account before signing in.
-          </p>
-          <button
-            onClick={() => setActiveTab('student-login')}
-            className="w-full py-3.5 px-4 bg-[#1E3A8A] hover:bg-[#1e40af] text-white text-sm font-medium rounded-xl transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1E3A8A]"
-          >
-            Go to Student Login
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="w-full max-w-md mx-auto px-6 py-16 md:py-24">
@@ -241,3 +241,4 @@ export const StudentSignUpPage: React.FC<StudentSignUpPageProps> = ({ setActiveT
     </div>
   );
 };
+

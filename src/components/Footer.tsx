@@ -32,9 +32,6 @@ export const Footer: React.FC<FooterProps> = ({ setActiveTab }) => {
             <li>
               <button onClick={() => { setActiveTab('workflow'); window.scrollTo({top: 0, behavior: 'smooth'}); }} className="hover:text-[#C49A3A] transition-colors cursor-pointer">Scholarship Workflow</button>
             </li>
-            <li>
-              <button onClick={() => { setActiveTab('student-info'); window.scrollTo({top: 0, behavior: 'smooth'}); }} className="hover:text-[#C49A3A] transition-colors cursor-pointer">Student Information</button>
-            </li>
           </ul>
         </div>
 

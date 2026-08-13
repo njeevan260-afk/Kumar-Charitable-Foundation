@@ -1,18 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
-import { Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { LOGO_URL } from '../../data/foundationData';
 
 interface StudentLoginPageProps {
-  setActiveTab: (tab: string) => void;
+  setActiveTab: (tab: string, state?: { email?: string; message?: string | null }) => void;
+  initialEmail?: string;
+  initialSuccessMessage?: string | null;
 }
 
-export const StudentLoginPage: React.FC<StudentLoginPageProps> = ({ setActiveTab }) => {
-  const [email, setEmail] = useState('');
+export const StudentLoginPage: React.FC<StudentLoginPageProps> = ({
+  setActiveTab,
+  initialEmail = '',
+  initialSuccessMessage = null,
+}) => {
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(initialSuccessMessage);
+
+  useEffect(() => {
+    if (initialEmail) {
+      setEmail(initialEmail);
+    }
+    if (initialSuccessMessage) {
+      setSuccessMessage(initialSuccessMessage);
+    }
+  }, [initialEmail, initialSuccessMessage]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,14 +36,43 @@ export const StudentLoginPage: React.FC<StudentLoginPageProps> = ({ setActiveTab
     setError(null);
 
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        if (authError.message.toLowerCase().includes('email not confirmed')) {
+          throw new Error('Please check your email and verify your address before logging in.');
+        }
+        throw authError;
+      }
+
+      if (!authData?.session) {
+        throw new Error('Please check your email and verify your address before logging in.');
+      }
       
-      setActiveTab('home');
+      let userRole: string | null = null;
+      if (authData?.user) {
+        try {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', authData.user.id)
+            .maybeSingle();
+          if (profileData?.role) userRole = profileData.role;
+        } catch (e) {}
+
+        if (!userRole) {
+          userRole = authData.user.user_metadata?.role || authData.user.app_metadata?.role || 'student';
+        }
+      }
+
+      if (userRole === 'admin') {
+        setActiveTab('admin-dashboard');
+      } else {
+        setActiveTab('student-dashboard');
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to login.');
     } finally {
@@ -63,6 +108,15 @@ export const StudentLoginPage: React.FC<StudentLoginPageProps> = ({ setActiveTab
           <p className="text-[#4F4F4F] text-sm">Sign in to access your student account.</p>
         </div>
 
+        {successMessage && (
+          <div className="mb-6 p-4 bg-emerald-50 rounded-xl flex items-start gap-3 border border-emerald-200">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-emerald-800 leading-relaxed font-medium">
+              {successMessage}
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleLogin} className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-[#1F2937] mb-1.5" htmlFor="email">
@@ -75,7 +129,10 @@ export const StudentLoginPage: React.FC<StudentLoginPageProps> = ({ setActiveTab
                 type="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (error) setError(null);
+                }}
                 className="w-full pl-11 pr-4 py-3 bg-[#FFFDF8] border border-[#E8DED0] rounded-xl text-sm text-[#1F2937] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent transition-all"
                 placeholder="Enter your email"
               />
@@ -93,7 +150,10 @@ export const StudentLoginPage: React.FC<StudentLoginPageProps> = ({ setActiveTab
                 type="password"
                 required
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (error) setError(null);
+                }}
                 className="w-full pl-11 pr-4 py-3 bg-[#FFFDF8] border border-[#E8DED0] rounded-xl text-sm text-[#1F2937] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent transition-all"
                 placeholder="Enter your password"
               />
@@ -179,3 +239,4 @@ export const StudentLoginPage: React.FC<StudentLoginPageProps> = ({ setActiveTab
     </div>
   );
 };
+

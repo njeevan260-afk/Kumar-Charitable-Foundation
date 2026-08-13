@@ -6,7 +6,6 @@ import { HomePage } from './components/HomePage';
 import { AboutPage } from './components/AboutPage';
 import { ServicesPage } from './components/ServicesPage';
 import { WorkflowPage } from './components/WorkflowPage';
-import { StudentInfoPage } from './components/StudentInfoPage';
 import { StudentWorksPage } from './components/StudentWorksPage';
 import { GalleryPage } from './components/GalleryPage';
 import { TestimonialsPage } from './components/TestimonialsPage';
@@ -23,6 +22,14 @@ import { supabase } from './supabaseClient';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('home');
+  const [authEmail, setAuthEmail] = useState<string>('');
+  const [authSuccessMessage, setAuthSuccessMessage] = useState<string | null>(null);
+
+  const navigateToTab = (tab: string, state?: { email?: string; message?: string | null }) => {
+    if (state?.email !== undefined) setAuthEmail(state.email);
+    if (state?.message !== undefined) setAuthSuccessMessage(state.message);
+    setActiveTab(tab);
+  };
 
   useEffect(() => {
     // Check for password recovery hash/params
@@ -46,15 +53,13 @@ export default function App() {
   const renderActiveView = () => {
     switch (activeTab) {
       case 'home':
-        return <HomePage setActiveTab={setActiveTab} />;
+        return <HomePage setActiveTab={navigateToTab} />;
       case 'about':
         return <AboutPage />;
       case 'services':
         return <ServicesPage />;
       case 'workflow':
         return <WorkflowPage />;
-      case 'student-info':
-        return <StudentInfoPage />;
       case 'student-works':
         return <StudentWorksPage />;
       case 'gallery':
@@ -64,29 +69,35 @@ export default function App() {
       case 'contact':
         return <ContactPage />;
       case 'login':
-        return <LoginSelectionPage setActiveTab={setActiveTab} />;
+        return <LoginSelectionPage setActiveTab={navigateToTab} />;
       case 'admin-login':
-        return <AdminLoginPage setActiveTab={setActiveTab} />;
+        return <AdminLoginPage setActiveTab={navigateToTab} />;
       case 'student-login':
-        return <StudentLoginPage setActiveTab={setActiveTab} />;
+        return (
+          <StudentLoginPage
+            setActiveTab={navigateToTab}
+            initialEmail={authEmail}
+            initialSuccessMessage={authSuccessMessage}
+          />
+        );
       case 'student-signup':
-        return <StudentSignUpPage setActiveTab={setActiveTab} />;
+        return <StudentSignUpPage setActiveTab={navigateToTab} />;
       case 'forgot-password':
-        return <ForgotPasswordPage setActiveTab={setActiveTab} />;
+        return <ForgotPasswordPage setActiveTab={navigateToTab} />;
       case 'reset-password':
-        return <ResetPasswordPage setActiveTab={setActiveTab} />;
+        return <ResetPasswordPage setActiveTab={navigateToTab} />;
       case 'admin-dashboard':
-        return <AdminDashboardPage setActiveTab={setActiveTab} />;
+        return <AdminDashboardPage setActiveTab={navigateToTab} />;
       case 'student-dashboard':
-        return <StudentDashboardPage setActiveTab={setActiveTab} />;
+        return <StudentDashboardPage setActiveTab={navigateToTab} />;
       default:
-        return <HomePage setActiveTab={setActiveTab} />;
+        return <HomePage setActiveTab={navigateToTab} />;
     }
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FFFDF8] text-[#4F4F4F] antialiased pt-[72px] md:pt-[80px]">
-      <Header activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Header activeTab={activeTab} setActiveTab={navigateToTab} />
       
       <main className="flex-grow flex flex-col items-center w-full overflow-hidden">
         <AnimatePresence mode="wait">
