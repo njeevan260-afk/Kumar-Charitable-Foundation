@@ -33,14 +33,40 @@ export default function App() {
 
   useEffect(() => {
     // Check for password recovery hash/params
-    supabase.auth.onAuthStateChange((event) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
         setActiveTab('reset-password');
+      } else if (event === 'SIGNED_IN' && session) {
+        // If user returns from Google OAuth callback or signs in
+        const hash = window.location.hash;
+        const search = window.location.search;
+        if (hash.includes('access_token=') || search.includes('code=')) {
+          const metaRole = session.user.user_metadata?.role || session.user.app_metadata?.role;
+          if (metaRole === 'admin') {
+            setActiveTab('admin-dashboard');
+          } else {
+            setActiveTab('student-dashboard');
+          }
+        }
       }
     });
 
-    // Or checking via URL params directly
+    // Check if initial load contains OAuth tokens or recovery
     const hash = window.location.hash;
+    const search = window.location.search;
+    if (hash.includes('access_token=') || search.includes('code=')) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          const metaRole = session.user.user_metadata?.role || session.user.app_metadata?.role;
+          if (metaRole === 'admin') {
+            setActiveTab('admin-dashboard');
+          } else {
+            setActiveTab('student-dashboard');
+          }
+        }
+      });
+    }
+
     if (hash && hash.includes('type=recovery')) {
       setActiveTab('reset-password');
     }
@@ -48,6 +74,10 @@ export default function App() {
     if (params.get('type') === 'recovery') {
       setActiveTab('reset-password');
     }
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
   }, []);
 
   const renderActiveView = () => {
