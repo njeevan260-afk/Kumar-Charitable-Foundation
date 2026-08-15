@@ -22,6 +22,7 @@ export const StudentLoginPage: React.FC<StudentLoginPageProps> = ({
   const [successMessage, setSuccessMessage] = useState<string | null>(initialSuccessMessage);
 
   useEffect(() => {
+    // Note: Email remembering via localStorage has been removed for security/PII compliance.
     if (initialEmail) {
       setEmail(initialEmail);
     }
@@ -34,6 +35,13 @@ export const StudentLoginPage: React.FC<StudentLoginPageProps> = ({
     e.preventDefault();
     setLoading(true);
     setError(null);
+    
+    // Set persistence type before signing in (non-PII flag only)
+    if (rememberMe) {
+      localStorage.setItem('session_persistence', 'local');
+    } else {
+      localStorage.setItem('session_persistence', 'session');
+    }
 
     try {
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -55,11 +63,21 @@ export const StudentLoginPage: React.FC<StudentLoginPageProps> = ({
       let userRole: string | null = null;
       if (authData?.user) {
         try {
-          const { data: profileData } = await supabase
+          let { data: profileData } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', authData.user.id)
             .maybeSingle();
+
+          if (!profileData && authData.user.email) {
+            const { data: byEmail } = await supabase
+              .from('profiles')
+              .select('role')
+              .ilike('email', authData.user.email)
+              .maybeSingle();
+            if (byEmail) profileData = byEmail;
+          }
+
           if (profileData?.role) userRole = profileData.role;
         } catch (e) {}
 
@@ -68,7 +86,12 @@ export const StudentLoginPage: React.FC<StudentLoginPageProps> = ({
         }
       }
 
-      if (userRole === 'admin') {
+      const normalizedRole = userRole ? String(userRole).toLowerCase().trim() : 'student';
+
+      if (normalizedRole === 'admin' || normalizedRole === 'administrator') {
+        try {
+          await supabase.auth.updateUser({ data: { role: 'admin' } });
+        } catch (e) {}
         setActiveTab('admin-dashboard');
       } else {
         setActiveTab('student-dashboard');

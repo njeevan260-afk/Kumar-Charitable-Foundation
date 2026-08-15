@@ -17,6 +17,7 @@ import { AdminEnglishProgressTab } from '../admin/AdminEnglishProgressTab';
 import { AdminNotificationsTab } from '../admin/AdminNotificationsTab';
 import { AdminStudentDetailModal } from '../admin/AdminStudentDetailModal';
 import { AdminStudentApplicationsTab } from '../admin/AdminStudentApplicationsTab';
+import { AdminProjectsTab } from '../admin/AdminProjectsTab';
 import { LOGO_URL } from '../../data/foundationData';
 import {
   LayoutDashboard,
@@ -31,7 +32,8 @@ import {
   X,
   ChevronRight,
   RefreshCw,
-  ClipboardList
+  ClipboardList,
+  Briefcase
 } from 'lucide-react';
 
 interface AdminDashboardPageProps {
@@ -91,15 +93,21 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiv
     };
   }, [setActiveTab]);
 
+  const isAdminUser =
+    role === 'admin' ||
+    profile?.role === 'admin' ||
+    user?.user_metadata?.role === 'admin' ||
+    user?.app_metadata?.role === 'admin';
+
   useEffect(() => {
     if (!authLoading && !sessionChecking) {
       if (!user) {
         setActiveTab('admin-login');
-      } else if (role === 'student') {
+      } else if (!isAdminUser && role === 'student') {
         setActiveTab('student-dashboard');
       }
     }
-  }, [user, role, authLoading, sessionChecking, setActiveTab]);
+  }, [user, role, profile, authLoading, sessionChecking, isAdminUser, setActiveTab]);
 
   // Load all real Supabase Data for Admin
   const loadAdminData = useCallback(async () => {
@@ -153,7 +161,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiv
 
       if (profilesData && Array.isArray(profilesData)) {
         fetchedProfiles = (profilesData as any[])
-          .filter((p) => p.role !== 'admin' && p.id !== user?.id && p.email !== user?.email)
+          .filter((p) => {
+            const r = p.role ? String(p.role).toLowerCase().trim() : '';
+            return r !== 'admin' && r !== 'administrator' && p.id !== user?.id && p.email !== user?.email;
+          })
           .map(normalizeStudentProfile);
       }
 
@@ -225,7 +236,8 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiv
               .eq('id', sid)
               .maybeSingle();
 
-            if (singleProfile && singleProfile.role !== 'admin') {
+            const r = singleProfile?.role ? String(singleProfile.role).toLowerCase().trim() : '';
+            if (singleProfile && r !== 'admin' && r !== 'administrator') {
               profileMap.set(sid, normalizeStudentProfile(singleProfile));
               continue;
             }
@@ -260,7 +272,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiv
         setNotifications(notifData as NotificationItem[]);
       }
     } catch (err) {
-      console.error('Error fetching admin data:', err);
     } finally {
       setDataLoading(false);
       setRefreshing(false);
@@ -268,10 +279,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiv
   }, [user]);
 
   useEffect(() => {
-    if (user && role === 'admin') {
+    if (user && (role === 'admin' || isAdminUser)) {
       loadAdminData();
     }
-  }, [user, role, loadAdminData]);
+  }, [user, role, isAdminUser, loadAdminData]);
 
   const handleManualRefresh = async () => {
     setRefreshing(true);
@@ -283,7 +294,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiv
     setActiveTab('home');
   };
 
-  if (authLoading || sessionChecking || !user || role !== 'admin') {
+  if (authLoading || sessionChecking || !user || (!isAdminUser && role !== 'admin')) {
     return (
       <div className="w-full min-h-[60vh] flex items-center justify-center py-24">
         <div className="flex flex-col items-center gap-4">
@@ -294,7 +305,18 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiv
     );
   }
 
-  const displayName = profile?.full_name || user?.user_metadata?.full_name || 'Admin';
+  let displayName = profile?.full_name || user?.user_metadata?.full_name;
+  if (!displayName || displayName === 'Admin') {
+     const emailPrefix = user?.email?.split('@')[0];
+     if (emailPrefix) {
+        displayName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+        if (displayName.toLowerCase().startsWith('rudrakumar')) {
+          displayName = 'Rudrakumar';
+        }
+     } else {
+        displayName = 'Admin';
+     }
+  }
 
   const navItems = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -303,6 +325,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiv
     { id: 'documents', label: 'Documents', icon: FileText, badge: documents.length },
     { id: 'applications', label: 'Student Applications', icon: ClipboardList },
     { id: 'english-progress', label: 'English Companion', icon: Sparkles, badge: englishSummaries.length },
+    { id: 'projects', label: 'Projects', icon: Briefcase },
     { id: 'notifications', label: 'Notifications', icon: Bell, badge: notifications.length },
   ];
 
@@ -492,6 +515,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiv
                   students={students}
                   onSelectStudentProfile={(st) => setInspectedStudent(st)}
                 />
+              )}
+
+              {activeSection === 'projects' && (
+                <AdminProjectsTab students={students} />
               )}
 
               {activeSection === 'notifications' && (

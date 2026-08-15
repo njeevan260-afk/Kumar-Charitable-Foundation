@@ -72,3 +72,16 @@ export interface NotificationItem {
   type?: 'announcement' | 'academic' | 'general';
 }
 
+export interface StudentProject {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  project_link: string;
+  admin_feedback?: string;
+  admin_rating?: number;
+  status: 'pending' | 'reviewed';
+  created_at: string;
+  updated_at?: string;
+}
+

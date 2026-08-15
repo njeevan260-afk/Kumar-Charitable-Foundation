@@ -108,7 +108,7 @@ export async function resolveDocumentPreview(
       }
     }
   } catch (err) {
-    console.warn('Direct storage download notice:', err);
+     // ('Direct storage download notice:', err);
   }
 
   // Strategy 2: Generate a signed URL and try fetching as blob or fallback to signed URL
@@ -140,7 +140,7 @@ export async function resolveDocumentPreview(
       }
     }
   } catch (err) {
-    console.warn('Signed URL generation notice:', err);
+     // ('Signed URL generation notice:', err);
   }
 
   // Strategy 3: Public URL
@@ -156,7 +156,7 @@ export async function resolveDocumentPreview(
       }
     }
   } catch (err) {
-    console.warn('Public URL retrieval notice:', err);
+     // ('Public URL retrieval notice:', err);
   }
 
   // Strategy 4: If full HTTP URL, attempt fetch as blob or return URL

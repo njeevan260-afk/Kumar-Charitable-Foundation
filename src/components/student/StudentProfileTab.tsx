@@ -79,7 +79,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
         course: course.trim(),
         branch: branch.trim(),
         current_semester: currentSemester.trim(),
-        role: 'student',
+        role: profile.role || 'student',
         status: 'active',
         metadata: updatedMetadata,
         updated_at: new Date().toISOString(),
@@ -109,7 +109,7 @@ export const StudentProfileTab: React.FC<StudentProfileTabProps> = ({
               id: profile.id,
               email: profile.email || '',
               full_name: fullName.trim(),
-              role: 'student',
+              role: profile.role || 'student',
               metadata: updatedMetadata,
             }, { onConflict: 'id' });
 

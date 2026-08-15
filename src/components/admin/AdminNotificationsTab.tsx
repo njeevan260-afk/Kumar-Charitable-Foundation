@@ -95,7 +95,6 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
       setMessage('');
       await onRefreshNotifications();
     } catch (err: any) {
-      console.error('Error sending notification:', err);
       setErrorMsg(err.message || 'Failed to dispatch notification.');
     } finally {
       setSending(false);
@@ -109,7 +108,6 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
       if (error) throw error;
       await onRefreshNotifications();
     } catch (err: any) {
-      console.error('Error deleting notification:', err);
     } finally {
       setDeletingId(null);
     }

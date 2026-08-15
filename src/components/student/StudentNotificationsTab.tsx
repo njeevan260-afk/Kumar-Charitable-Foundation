@@ -30,7 +30,6 @@ export const StudentNotificationsTab: React.FC<StudentNotificationsTabProps> = (
       const updated = notifications.map((n) => (n.id === id ? { ...n, is_read: true } : n));
       onNotificationsChange(updated);
     } catch (e) {
-      console.error(e);
     }
   };
 

@@ -41,12 +41,35 @@ export default function App() {
         const hash = window.location.hash;
         const search = window.location.search;
         if (hash.includes('access_token=') || search.includes('code=')) {
-          const metaRole = session.user.user_metadata?.role || session.user.app_metadata?.role;
-          if (metaRole === 'admin') {
-            setActiveTab('admin-dashboard');
-          } else {
-            setActiveTab('student-dashboard');
-          }
+          (async () => {
+            try {
+              let pRole: string | null = null;
+              let { data: pData } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', session.user.id)
+                .maybeSingle();
+
+              if (!pData && session.user.email) {
+                const { data: byEmail } = await supabase
+                  .from('profiles')
+                  .select('role')
+                  .ilike('email', session.user.email)
+                  .maybeSingle();
+                if (byEmail) pData = byEmail;
+              }
+
+              pRole = pData?.role || session.user.user_metadata?.role || session.user.app_metadata?.role;
+              const normalized = pRole ? String(pRole).toLowerCase().trim() : 'student';
+              if (normalized === 'admin' || normalized === 'administrator') {
+                setActiveTab('admin-dashboard');
+              } else {
+                setActiveTab('student-dashboard');
+              }
+            } catch (e) {
+              setActiveTab('student-dashboard');
+            }
+          })();
         }
       }
     });
@@ -55,12 +78,33 @@ export default function App() {
     const hash = window.location.hash;
     const search = window.location.search;
     if (hash.includes('access_token=') || search.includes('code=')) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
+      supabase.auth.getSession().then(async ({ data: { session } }) => {
         if (session) {
-          const metaRole = session.user.user_metadata?.role || session.user.app_metadata?.role;
-          if (metaRole === 'admin') {
-            setActiveTab('admin-dashboard');
-          } else {
+          try {
+            let pRole: string | null = null;
+            let { data: pData } = await supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', session.user.id)
+              .maybeSingle();
+
+            if (!pData && session.user.email) {
+              const { data: byEmail } = await supabase
+                .from('profiles')
+                .select('role')
+                .ilike('email', session.user.email)
+                .maybeSingle();
+              if (byEmail) pData = byEmail;
+            }
+
+            pRole = pData?.role || session.user.user_metadata?.role || session.user.app_metadata?.role;
+            const normalized = pRole ? String(pRole).toLowerCase().trim() : 'student';
+            if (normalized === 'admin' || normalized === 'administrator') {
+              setActiveTab('admin-dashboard');
+            } else {
+              setActiveTab('student-dashboard');
+            }
+          } catch (e) {
             setActiveTab('student-dashboard');
           }
         }

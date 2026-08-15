@@ -110,7 +110,6 @@ export const AdminDocumentsTab: React.FC<AdminDocumentsTabProps> = ({
         }
       } catch (err: any) {
         if (!isMounted) return;
-        console.error('Preview error:', err);
         setPreviewError(err.message || 'Failed to render file preview.');
       } finally {
         if (isMounted) {

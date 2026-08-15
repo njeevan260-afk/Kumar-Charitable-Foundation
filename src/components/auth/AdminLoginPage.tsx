@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
 import { LOGO_URL } from '../../data/foundationData';
@@ -14,10 +14,21 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ setActiveTab }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    // Note: Email remembering via localStorage has been removed for security/PII compliance.
+  }, []);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    // Set persistence type before signing in (non-PII flag only)
+    if (rememberMe) {
+      localStorage.setItem('session_persistence', 'local');
+    } else {
+      localStorage.setItem('session_persistence', 'session');
+    }
 
     try {
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -38,12 +49,23 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ setActiveTab }) 
 
       // Check role directly from profiles table
       let userRole: string | null = null;
+      let profileData: any = null;
       try {
-        const { data: profileData } = await supabase
+        let { data: pData } = await supabase
           .from('profiles')
           .select('id, full_name, email, role')
           .eq('id', authData.user.id)
           .maybeSingle();
+        profileData = pData;
+
+        if (!profileData && authData.user.email) {
+          const { data: byEmail } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, role')
+            .ilike('email', authData.user.email)
+            .maybeSingle();
+          if (byEmail) profileData = byEmail;
+        }
 
         if (profileData && profileData.role) {
           userRole = profileData.role;
@@ -56,24 +78,40 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ setActiveTab }) 
         userRole = authData.user.user_metadata?.role || authData.user.app_metadata?.role || null;
       }
 
+      const normalizedRole = userRole ? String(userRole).toLowerCase().trim() : null;
+
       // If this account is explicitly registered as a student
-      if (userRole === 'student') {
+      if (normalizedRole === 'student') {
         await supabase.auth.signOut();
         throw new Error('Access denied. This account does not have administrator privileges. Please sign in via the Student Login.');
       }
 
-      // If no profile exists yet in the database, ensure it is created as admin
-      if (!userRole) {
-        try {
-          await supabase.from('profiles').upsert({
-            id: authData.user.id,
-            email: authData.user.email,
-            full_name: authData.user.user_metadata?.full_name || 'Admin',
-            role: 'admin',
-          });
-        } catch (e) {
-          // ignore if table doesn't allow direct insert
+      // Ensure profile and auth user_metadata reflect admin role
+      try {
+        let finalName = profileData?.full_name || authData.user.user_metadata?.full_name;
+        if (!finalName || finalName === 'Admin') {
+          const emailPrefix = authData.user.email?.split('@')[0];
+          if (emailPrefix) {
+             finalName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+             // Special case for rudrakumar25
+             if (finalName.toLowerCase().startsWith('rudrakumar')) {
+               finalName = 'Rudrakumar';
+             }
+          } else {
+             finalName = 'Admin';
+          }
         }
+        await supabase.auth.updateUser({
+          data: { role: 'admin', full_name: finalName },
+        });
+        await supabase.from('profiles').upsert({
+          id: authData.user.id,
+          email: authData.user.email,
+          full_name: finalName,
+          role: 'admin',
+        }, { onConflict: 'id' });
+      } catch (e) {
+        // ignore if table doesn't allow direct insert
       }
 
       setActiveTab('admin-dashboard');

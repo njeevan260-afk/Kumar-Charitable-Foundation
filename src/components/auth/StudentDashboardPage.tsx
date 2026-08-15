@@ -10,6 +10,7 @@ import { StudentDocumentsTab } from '../student/StudentDocumentsTab';
 import { StudentPreviousResultsTab } from '../student/StudentPreviousResultsTab';
 import { StudentEnglishTab } from '../student/StudentEnglishTab';
 import { StudentNotificationsTab } from '../student/StudentNotificationsTab';
+import { StudentProjectsTab } from '../student/StudentProjectsTab';
 import { LOGO_URL } from '../../data/foundationData';
 import {
   LayoutDashboard,
@@ -24,6 +25,7 @@ import {
   X,
   ShieldCheck,
   ChevronRight,
+  Briefcase,
 } from 'lucide-react';
 
 interface StudentDashboardPageProps {
@@ -53,16 +55,42 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ setA
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
+  // Auto-redirect if user is an admin or unauthenticated
+  useEffect(() => {
+    if (!authLoading) {
+      if (!user) {
+        setActiveTab('student-login');
+        return;
+      }
+      const currentRole = (role || authProfile?.role || user.user_metadata?.role || user.app_metadata?.role || '')?.toLowerCase()?.trim();
+      if (currentRole === 'admin' || currentRole === 'administrator') {
+        setActiveTab('admin-dashboard');
+      }
+    }
+  }, [user, role, authProfile, authLoading, setActiveTab]);
+
   // Fetch all real student data
   const loadStudentData = useCallback(async (userId: string) => {
     setDataLoading(true);
     try {
       // 1. Fetch Profile
-      const { data: profData } = await supabase
+      let profData: any = null;
+      const { data: byId } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
+
+      if (byId) {
+        profData = byId;
+      } else if (user?.email) {
+        const { data: byEmail } = await supabase
+          .from('profiles')
+          .select('*')
+          .ilike('email', user.email)
+          .maybeSingle();
+        if (byEmail) profData = byEmail;
+      }
 
       if (profData) {
         let meta = profData.metadata;
@@ -75,6 +103,13 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ setA
         }
         meta = meta || {};
         const userMeta = user?.user_metadata || {};
+
+        // If user is actually an admin, immediately redirect to admin dashboard
+        const rawRole = (profData.role || meta.role || userMeta.role || '')?.toLowerCase()?.trim();
+        if (rawRole === 'admin' || rawRole === 'administrator') {
+          setActiveTab('admin-dashboard');
+          return;
+        }
 
         const resolvedProfile: StudentProfile = {
           ...profData,
@@ -101,23 +136,30 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ setA
               course: resolvedProfile.course,
               branch: resolvedProfile.branch,
               current_semester: resolvedProfile.current_semester,
-              role: 'student',
+              role: profData.role || 'student',
               metadata: resolvedProfile.metadata,
             }, { onConflict: 'id' })
             .then(() => {});
         }
       } else if (user) {
+        const userMeta = user.user_metadata || {};
+        const metaRole = (userMeta.role || user.app_metadata?.role || '')?.toLowerCase()?.trim();
+        if (metaRole === 'admin' || metaRole === 'administrator') {
+          setActiveTab('admin-dashboard');
+          return;
+        }
+
         const fallbackProfile: StudentProfile = {
           id: user.id,
           email: user.email || '',
-          full_name: user.user_metadata?.full_name || 'Student',
+          full_name: userMeta.full_name || 'Student',
           role: 'student',
-          mobile_number: user.user_metadata?.mobile_number || '',
-          college_name: user.user_metadata?.college_name || '',
-          course: user.user_metadata?.course || '',
-          branch: user.user_metadata?.branch || '',
-          current_semester: user.user_metadata?.current_semester || '',
-          metadata: user.user_metadata || {},
+          mobile_number: userMeta.mobile_number || '',
+          college_name: userMeta.college_name || '',
+          course: userMeta.course || '',
+          branch: userMeta.branch || '',
+          current_semester: userMeta.current_semester || '',
+          metadata: userMeta,
         };
         setStudentProfile(fallbackProfile);
 
@@ -251,7 +293,6 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ setA
         console.warn('Notifications fetch notice:', e);
       }
     } catch (err) {
-      console.error('Error loading student dashboard data:', err);
     } finally {
       setDataLoading(false);
     }
@@ -260,15 +301,18 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ setA
   // Auth gate check
   useEffect(() => {
     if (!authLoading) {
+      const currentRole = (role || authProfile?.role || user?.user_metadata?.role || user?.app_metadata?.role || '')?.toLowerCase()?.trim();
+      const isAdmin = currentRole === 'admin' || currentRole === 'administrator';
+
       if (!user) {
         setActiveTab('student-login');
-      } else if (role === 'admin') {
+      } else if (isAdmin) {
         setActiveTab('admin-dashboard');
       } else {
         loadStudentData(user.id);
       }
     }
-  }, [user, role, authLoading, setActiveTab, loadStudentData]);
+  }, [user, role, authProfile, authLoading, setActiveTab, loadStudentData]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -302,6 +346,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ setA
     { id: 'documents', label: 'Upload Marks & Documents', icon: UploadCloud },
     { id: 'previous-results', label: 'Previous Results', icon: History },
     { id: 'english', label: 'English Companion', icon: Sparkles },
+    { id: 'projects', label: 'My Projects', icon: Briefcase },
     {
       id: 'notifications',
       label: 'Notifications',
@@ -573,6 +618,10 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ setA
                   summaries={englishSummaries}
                   onSummariesChange={(newSummaries) => setEnglishSummaries(newSummaries)}
                 />
+              )}
+
+              {activeSection === 'projects' && (
+                <StudentProjectsTab />
               )}
 
               {activeSection === 'notifications' && (

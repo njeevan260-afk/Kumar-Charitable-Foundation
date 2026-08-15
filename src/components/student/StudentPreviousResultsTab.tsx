@@ -66,7 +66,7 @@ export const StudentPreviousResultsTab: React.FC<StudentPreviousResultsTabProps>
           return;
         }
       } catch (err) {
-        console.warn('Could not create signed URL for document preview:', err);
+         // ('Could not create signed URL for document preview:', err);
       }
 
       // Fallback to the raw URL/path

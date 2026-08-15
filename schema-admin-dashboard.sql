@@ -21,9 +21,6 @@ AS $$
   ) OR COALESCE(
     (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin',
     false
-  ) OR EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE id = auth.uid() AND role = 'admin'
   );
 $$;
 
