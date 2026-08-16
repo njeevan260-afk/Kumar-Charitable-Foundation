@@ -85,3 +85,22 @@ export interface StudentProject {
   updated_at?: string;
 }
 
+export interface StudentMeetingNote {
+  id: string;
+  user_id: string;
+  meeting_topic: string;
+  notes: string;
+  learnt: string;
+  feedback: string;
+  created_at: string;
+}
+
+export interface StudentSkillUpdate {
+  id: string;
+  user_id: string;
+  skill_name: string;
+  description: string;
+  created_at: string;
+}
+
+

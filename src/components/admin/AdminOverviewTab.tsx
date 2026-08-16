@@ -270,6 +270,17 @@ export const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
               </button>
 
               <button
+                onClick={() => onNavigateTab('logs')}
+                className="w-full flex items-center justify-between p-3 bg-[#FFFDF8] hover:bg-[#F3EFE9] rounded-xl border border-[#E8DED0] text-left text-sm font-semibold text-[#1F2937] transition-colors cursor-pointer"
+              >
+                <span className="flex items-center gap-2.5">
+                  <FileText className="w-4 h-4 text-[#1E3A8A]" />
+                  Review Logs & Reflections
+                </span>
+                <ChevronRight className="w-4 h-4 text-[#A09080]" />
+              </button>
+
+              <button
                 onClick={() => onNavigateTab('english-progress')}
                 className="w-full flex items-center justify-between p-3 bg-[#FFFDF8] hover:bg-[#F3EFE9] rounded-xl border border-[#E8DED0] text-left text-sm font-semibold text-[#1F2937] transition-colors cursor-pointer"
               >

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StudentProfile, AcademicRecord, AcademicDocument, EnglishLearningSummary } from '../../types/student';
+import { supabase } from '../../supabaseClient';
+import { StudentProfile, AcademicRecord, AcademicDocument, EnglishLearningSummary, StudentMeetingNote, StudentSkillUpdate } from '../../types/student';
 import { resolveDocumentPreview } from '../../utils/documentViewer';
 import {
   X,
@@ -17,6 +18,7 @@ import {
   Loader2,
   Download,
   AlertCircle,
+  MessageSquare
 } from 'lucide-react';
 
 interface AdminStudentDetailModalProps {
@@ -34,7 +36,7 @@ export const AdminStudentDetailModal: React.FC<AdminStudentDetailModalProps> = (
   englishSummaries,
   onClose,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'profile' | 'academic' | 'documents' | 'english'>('profile');
+  const [activeSubTab, setActiveSubTab] = useState<'profile' | 'academic' | 'documents' | 'english' | 'logs'>('profile');
   const [selectedDoc, setSelectedDoc] = useState<AcademicDocument | null>(null);
   const [docSignedUrl, setDocSignedUrl] = useState<string>('');
   const [isPdf, setIsPdf] = useState(false);
@@ -42,10 +44,43 @@ export const AdminStudentDetailModal: React.FC<AdminStudentDetailModalProps> = (
   const [loadingDocUrl, setLoadingDocUrl] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
+  const [meetingNotes, setMeetingNotes] = useState<StudentMeetingNote[]>([]);
+  const [skillUpdates, setSkillUpdates] = useState<StudentSkillUpdate[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+
   // Filter records specifically for this student
   const studentRecords = academicRecords.filter((r) => r.user_id === student?.id);
   const studentDocuments = documents.filter((d) => d.user_id === student?.id);
   const studentSummaries = englishSummaries.filter((s) => s.user_id === student?.id);
+
+  useEffect(() => {
+    if (!student) return;
+    let isMounted = true;
+
+    const fetchLogs = async () => {
+      setLoadingLogs(true);
+      try {
+        const [notesRes, skillsRes] = await Promise.all([
+          supabase.from('student_meeting_notes').select('*').eq('user_id', student.id).order('created_at', { ascending: false }),
+          supabase.from('student_skills_updates').select('*').eq('user_id', student.id).order('created_at', { ascending: false })
+        ]);
+
+        if (!isMounted) return;
+        if (notesRes.data) setMeetingNotes(notesRes.data as StudentMeetingNote[]);
+        if (skillsRes.data) setSkillUpdates(skillsRes.data as StudentSkillUpdate[]);
+      } catch (err) {
+        // Ignore if table not created
+      } finally {
+        if (isMounted) setLoadingLogs(false);
+      }
+    };
+
+    if (activeSubTab === 'logs') {
+      fetchLogs();
+    }
+
+    return () => { isMounted = false; };
+  }, [student, activeSubTab]);
 
   // Fetch signed URL when a document is clicked for preview inside modal
   useEffect(() => {
@@ -174,6 +209,20 @@ export const AdminStudentDetailModal: React.FC<AdminStudentDetailModalProps> = (
           >
             <Sparkles className="w-3.5 h-3.5" />
             English Companion ({studentSummaries.length})
+          </button>
+          <button
+            onClick={() => {
+              setActiveSubTab('logs');
+              setSelectedDoc(null);
+            }}
+            className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeSubTab === 'logs'
+                ? 'border-[#1E3A8A] text-[#1E3A8A]'
+                : 'border-transparent text-[#737373] hover:text-[#1F2937]'
+            }`}
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            Logs & Reflections
           </button>
         </div>
 
@@ -433,6 +482,71 @@ export const AdminStudentDetailModal: React.FC<AdminStudentDetailModalProps> = (
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* 5. Logs Tab */}
+          {activeSubTab === 'logs' && (
+            <div className="space-y-6">
+              {loadingLogs ? (
+                <div className="flex justify-center p-8"><Loader2 className="w-8 h-8 animate-spin text-[#1E3A8A]" /></div>
+              ) : (
+                <>
+                  <div className="bg-white rounded-2xl border border-[#E8DED0] overflow-hidden">
+                    <div className="bg-[#F8F5F0] px-5 py-3 border-b border-[#E8DED0]">
+                      <h3 className="font-bold text-[#1F2937] text-sm flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4 text-[#C49A3A]" /> Meeting Notes
+                      </h3>
+                    </div>
+                    <div className="p-5 space-y-4">
+                      {meetingNotes.length === 0 ? (
+                        <p className="text-xs text-[#737373] text-center">No meeting notes logged yet.</p>
+                      ) : (
+                        meetingNotes.map(note => (
+                          <div key={note.id} className="p-4 bg-[#FFFDF8] border border-[#E8DED0] rounded-xl">
+                            <div className="flex justify-between items-start mb-2">
+                              <h4 className="font-bold text-[#1F2937] text-sm">{note.meeting_topic}</h4>
+                              <span className="text-[10px] font-semibold text-[#6B7280] bg-[#F3F4F6] px-2 py-1 rounded">
+                                {new Date(note.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="space-y-2 mt-3 text-xs text-[#4B5563]">
+                              <div><strong className="text-[#374151]">Notes:</strong> <p className="whitespace-pre-wrap">{note.notes}</p></div>
+                              <div className="p-2 bg-blue-50/50 rounded border border-blue-100"><strong className="text-[#1E3A8A]">Learnt:</strong> <p className="whitespace-pre-wrap">{note.learnt}</p></div>
+                              {note.feedback && <div className="p-2 bg-[#F8F5F0] rounded border border-[#E8DED0]"><strong className="text-[#C49A3A]">Feedback:</strong> <p className="whitespace-pre-wrap">{note.feedback}</p></div>}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-2xl border border-[#E8DED0] overflow-hidden">
+                    <div className="bg-[#F8F5F0] px-5 py-3 border-b border-[#E8DED0]">
+                      <h3 className="font-bold text-[#1F2937] text-sm flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-[#C49A3A]" /> Skills & Technologies Updates
+                      </h3>
+                    </div>
+                    <div className="p-5 space-y-4">
+                      {skillUpdates.length === 0 ? (
+                        <p className="text-xs text-[#737373] text-center">No skills logged yet.</p>
+                      ) : (
+                        skillUpdates.map(skill => (
+                          <div key={skill.id} className="p-4 bg-[#FFFDF8] border border-[#E8DED0] rounded-xl">
+                            <div className="flex justify-between items-start mb-2">
+                              <h4 className="font-bold text-emerald-700 text-sm">{skill.skill_name}</h4>
+                              <span className="text-[10px] font-semibold text-[#6B7280] bg-[#F3F4F6] px-2 py-1 rounded">
+                                {new Date(skill.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <p className="text-xs text-[#4B5563] whitespace-pre-wrap mt-2">{skill.description}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           )}

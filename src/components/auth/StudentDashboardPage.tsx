@@ -11,6 +11,7 @@ import { StudentPreviousResultsTab } from '../student/StudentPreviousResultsTab'
 import { StudentEnglishTab } from '../student/StudentEnglishTab';
 import { StudentNotificationsTab } from '../student/StudentNotificationsTab';
 import { StudentProjectsTab } from '../student/StudentProjectsTab';
+import { StudentLogsTab } from '../student/StudentLogsTab';
 import { LOGO_URL } from '../../data/foundationData';
 import {
   LayoutDashboard,
@@ -26,6 +27,7 @@ import {
   ShieldCheck,
   ChevronRight,
   Briefcase,
+  FileText,
 } from 'lucide-react';
 
 interface StudentDashboardPageProps {
@@ -39,6 +41,8 @@ type DashboardSection =
   | 'documents'
   | 'previous-results'
   | 'english'
+  | 'projects'
+  | 'logs'
   | 'notifications';
 
 export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ setActiveTab }) => {
@@ -347,6 +351,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ setA
     { id: 'previous-results', label: 'Previous Results', icon: History },
     { id: 'english', label: 'English Companion', icon: Sparkles },
     { id: 'projects', label: 'My Projects', icon: Briefcase },
+    { id: 'logs', label: 'Logs & Reflections', icon: FileText },
     {
       id: 'notifications',
       label: 'Notifications',
@@ -622,6 +627,10 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ setA
 
               {activeSection === 'projects' && (
                 <StudentProjectsTab />
+              )}
+
+              {activeSection === 'logs' && (
+                <StudentLogsTab />
               )}
 
               {activeSection === 'notifications' && (

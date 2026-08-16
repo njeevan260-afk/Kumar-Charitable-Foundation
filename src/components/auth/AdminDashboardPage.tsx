@@ -18,6 +18,7 @@ import { AdminNotificationsTab } from '../admin/AdminNotificationsTab';
 import { AdminStudentDetailModal } from '../admin/AdminStudentDetailModal';
 import { AdminStudentApplicationsTab } from '../admin/AdminStudentApplicationsTab';
 import { AdminProjectsTab } from '../admin/AdminProjectsTab';
+import { AdminLogsTab } from '../admin/AdminLogsTab';
 import { LOGO_URL } from '../../data/foundationData';
 import {
   LayoutDashboard,
@@ -33,7 +34,9 @@ import {
   ChevronRight,
   RefreshCw,
   ClipboardList,
-  Briefcase
+  Briefcase,
+  ScrollText,
+  MessageSquare
 } from 'lucide-react';
 
 interface AdminDashboardPageProps {
@@ -47,6 +50,8 @@ type AdminSection =
   | 'academic-records'
   | 'documents'
   | 'english-progress'
+  | 'projects'
+  | 'logs'
   | 'notifications';
 
 export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiveTab }) => {
@@ -324,6 +329,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiv
     { id: 'academic-records', label: 'Academic Records', icon: BookOpen, badge: academicRecords.length },
     { id: 'documents', label: 'Documents', icon: FileText, badge: documents.length },
     { id: 'applications', label: 'Student Applications', icon: ClipboardList },
+    { id: 'logs', label: 'Logs & Reflections', icon: ScrollText },
     { id: 'english-progress', label: 'English Companion', icon: Sparkles, badge: englishSummaries.length },
     { id: 'projects', label: 'Projects', icon: Briefcase },
     { id: 'notifications', label: 'Notifications', icon: Bell, badge: notifications.length },
@@ -519,6 +525,13 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiv
 
               {activeSection === 'projects' && (
                 <AdminProjectsTab students={students} />
+              )}
+
+              {activeSection === 'logs' && (
+                <AdminLogsTab
+                  students={students}
+                  onSelectStudent={(st) => setInspectedStudent(st)}
+                />
               )}
 
               {activeSection === 'notifications' && (
