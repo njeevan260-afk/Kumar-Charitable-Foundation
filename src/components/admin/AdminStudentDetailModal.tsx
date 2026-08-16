@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
-import { StudentProfile, AcademicRecord, AcademicDocument, EnglishLearningSummary, StudentMeetingNote, StudentSkillUpdate } from '../../types/student';
+import {
+  StudentProfile,
+  AcademicRecord,
+  AcademicDocument,
+  EnglishLearningSummary,
+  StudentMeetingNote,
+  StudentSkillUpdate,
+  StudentProjectDocument,
+  StudentLearningProcessNote
+} from '../../types/student';
 import { resolveDocumentPreview } from '../../utils/documentViewer';
 import {
   X,
@@ -13,12 +22,15 @@ import {
   GraduationCap,
   Calendar,
   ExternalLink,
-  Award,
   Clock,
   Loader2,
   Download,
   AlertCircle,
-  MessageSquare
+  MessageSquare,
+  FileCode,
+  Compass,
+  Milestone,
+  Eye
 } from 'lucide-react';
 
 interface AdminStudentDetailModalProps {
@@ -44,8 +56,11 @@ export const AdminStudentDetailModal: React.FC<AdminStudentDetailModalProps> = (
   const [loadingDocUrl, setLoadingDocUrl] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
+  // Student Logs data
   const [meetingNotes, setMeetingNotes] = useState<StudentMeetingNote[]>([]);
   const [skillUpdates, setSkillUpdates] = useState<StudentSkillUpdate[]>([]);
+  const [projectDocs, setProjectDocs] = useState<StudentProjectDocument[]>([]);
+  const [learningNotes, setLearningNotes] = useState<StudentLearningProcessNote[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
 
   // Filter records specifically for this student
@@ -60,16 +75,20 @@ export const AdminStudentDetailModal: React.FC<AdminStudentDetailModalProps> = (
     const fetchLogs = async () => {
       setLoadingLogs(true);
       try {
-        const [notesRes, skillsRes] = await Promise.all([
+        const [notesRes, skillsRes, docsRes, learnRes] = await Promise.all([
           supabase.from('student_meeting_notes').select('*').eq('user_id', student.id).order('created_at', { ascending: false }),
-          supabase.from('student_skills_updates').select('*').eq('user_id', student.id).order('created_at', { ascending: false })
+          supabase.from('student_skills_updates').select('*').eq('user_id', student.id).order('created_at', { ascending: false }),
+          supabase.from('student_project_documents').select('*').eq('user_id', student.id).order('created_at', { ascending: false }),
+          supabase.from('student_learning_process_notes').select('*').eq('user_id', student.id).order('created_at', { ascending: false }),
         ]);
 
         if (!isMounted) return;
         if (notesRes.data) setMeetingNotes(notesRes.data as StudentMeetingNote[]);
         if (skillsRes.data) setSkillUpdates(skillsRes.data as StudentSkillUpdate[]);
+        if (docsRes.data) setProjectDocs(docsRes.data as StudentProjectDocument[]);
+        if (learnRes.data) setLearningNotes(learnRes.data as StudentLearningProcessNote[]);
       } catch (err) {
-        // Ignore if table not created
+        console.warn('Error fetching logs for student detail modal:', err);
       } finally {
         if (isMounted) setLoadingLogs(false);
       }
@@ -79,7 +98,9 @@ export const AdminStudentDetailModal: React.FC<AdminStudentDetailModalProps> = (
       fetchLogs();
     }
 
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [student, activeSubTab]);
 
   // Fetch signed URL when a document is clicked for preview inside modal
@@ -129,6 +150,8 @@ export const AdminStudentDetailModal: React.FC<AdminStudentDetailModalProps> = (
   }, [selectedDoc]);
 
   if (!student) return null;
+
+  const totalLogsCount = meetingNotes.length + skillUpdates.length + projectDocs.length + learningNotes.length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
@@ -194,7 +217,7 @@ export const AdminStudentDetailModal: React.FC<AdminStudentDetailModalProps> = (
             }`}
           >
             <FileText className="w-3.5 h-3.5" />
-            Documents ({studentDocuments.length})
+            Marks & Docs ({studentDocuments.length})
           </button>
           <button
             onClick={() => {
@@ -222,7 +245,7 @@ export const AdminStudentDetailModal: React.FC<AdminStudentDetailModalProps> = (
             }`}
           >
             <MessageSquare className="w-3.5 h-3.5" />
-            Logs & Reflections
+            Logs & Reflections ({totalLogsCount})
           </button>
         </div>
 
@@ -486,24 +509,27 @@ export const AdminStudentDetailModal: React.FC<AdminStudentDetailModalProps> = (
             </div>
           )}
 
-          {/* 5. Logs Tab */}
+          {/* 5. Logs & Reflections Tab */}
           {activeSubTab === 'logs' && (
             <div className="space-y-6">
               {loadingLogs ? (
-                <div className="flex justify-center p-8"><Loader2 className="w-8 h-8 animate-spin text-[#1E3A8A]" /></div>
+                <div className="flex justify-center p-8">
+                  <Loader2 className="w-8 h-8 animate-spin text-[#1E3A8A]" />
+                </div>
               ) : (
                 <>
+                  {/* Category 1: Meeting Notes */}
                   <div className="bg-white rounded-2xl border border-[#E8DED0] overflow-hidden">
-                    <div className="bg-[#F8F5F0] px-5 py-3 border-b border-[#E8DED0]">
+                    <div className="bg-[#F8F5F0] px-5 py-3 border-b border-[#E8DED0] flex items-center justify-between">
                       <h3 className="font-bold text-[#1F2937] text-sm flex items-center gap-2">
-                        <MessageSquare className="w-4 h-4 text-[#C49A3A]" /> Meeting Notes
+                        <BookOpen className="w-4 h-4 text-[#C49A3A]" /> Meeting Notes ({meetingNotes.length})
                       </h3>
                     </div>
                     <div className="p-5 space-y-4">
                       {meetingNotes.length === 0 ? (
-                        <p className="text-xs text-[#737373] text-center">No meeting notes logged yet.</p>
+                        <p className="text-xs text-[#737373] text-center py-4">No meeting notes logged yet.</p>
                       ) : (
-                        meetingNotes.map(note => (
+                        meetingNotes.map((note) => (
                           <div key={note.id} className="p-4 bg-[#FFFDF8] border border-[#E8DED0] rounded-xl">
                             <div className="flex justify-between items-start mb-2">
                               <h4 className="font-bold text-[#1F2937] text-sm">{note.meeting_topic}</h4>
@@ -512,9 +538,20 @@ export const AdminStudentDetailModal: React.FC<AdminStudentDetailModalProps> = (
                               </span>
                             </div>
                             <div className="space-y-2 mt-3 text-xs text-[#4B5563]">
-                              <div><strong className="text-[#374151]">Notes:</strong> <p className="whitespace-pre-wrap">{note.notes}</p></div>
-                              <div className="p-2 bg-blue-50/50 rounded border border-blue-100"><strong className="text-[#1E3A8A]">Learnt:</strong> <p className="whitespace-pre-wrap">{note.learnt}</p></div>
-                              {note.feedback && <div className="p-2 bg-[#F8F5F0] rounded border border-[#E8DED0]"><strong className="text-[#C49A3A]">Feedback:</strong> <p className="whitespace-pre-wrap">{note.feedback}</p></div>}
+                              <div>
+                                <strong className="text-[#374151]">Notes:</strong>
+                                <p className="whitespace-pre-wrap mt-0.5">{note.notes}</p>
+                              </div>
+                              <div className="p-2.5 bg-blue-50/50 rounded-lg border border-blue-100">
+                                <strong className="text-[#1E3A8A]">What I Learnt:</strong>
+                                <p className="whitespace-pre-wrap mt-0.5">{note.learnt}</p>
+                              </div>
+                              {note.feedback && (
+                                <div className="p-2.5 bg-[#F8F5F0] rounded-lg border border-[#E8DED0]">
+                                  <strong className="text-[#C49A3A]">Feedback:</strong>
+                                  <p className="whitespace-pre-wrap mt-0.5">{note.feedback}</p>
+                                </div>
+                              )}
                             </div>
                           </div>
                         ))
@@ -522,17 +559,18 @@ export const AdminStudentDetailModal: React.FC<AdminStudentDetailModalProps> = (
                     </div>
                   </div>
 
+                  {/* Category 2: Skills & Technologies Updates */}
                   <div className="bg-white rounded-2xl border border-[#E8DED0] overflow-hidden">
-                    <div className="bg-[#F8F5F0] px-5 py-3 border-b border-[#E8DED0]">
+                    <div className="bg-[#F8F5F0] px-5 py-3 border-b border-[#E8DED0] flex items-center justify-between">
                       <h3 className="font-bold text-[#1F2937] text-sm flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-[#C49A3A]" /> Skills & Technologies Updates
+                        <Sparkles className="w-4 h-4 text-emerald-600" /> Skills & Technologies Updates ({skillUpdates.length})
                       </h3>
                     </div>
                     <div className="p-5 space-y-4">
                       {skillUpdates.length === 0 ? (
-                        <p className="text-xs text-[#737373] text-center">No skills logged yet.</p>
+                        <p className="text-xs text-[#737373] text-center py-4">No skills logged yet.</p>
                       ) : (
-                        skillUpdates.map(skill => (
+                        skillUpdates.map((skill) => (
                           <div key={skill.id} className="p-4 bg-[#FFFDF8] border border-[#E8DED0] rounded-xl">
                             <div className="flex justify-between items-start mb-2">
                               <h4 className="font-bold text-emerald-700 text-sm">{skill.skill_name}</h4>
@@ -540,7 +578,102 @@ export const AdminStudentDetailModal: React.FC<AdminStudentDetailModalProps> = (
                                 {new Date(skill.created_at).toLocaleDateString()}
                               </span>
                             </div>
-                            <p className="text-xs text-[#4B5563] whitespace-pre-wrap mt-2">{skill.description}</p>
+                            <p className="text-xs text-[#4B5563] whitespace-pre-wrap mt-1 leading-relaxed">{skill.description}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Category 3: Project Documents & Prompts */}
+                  <div className="bg-white rounded-2xl border border-[#E8DED0] overflow-hidden">
+                    <div className="bg-[#F8F5F0] px-5 py-3 border-b border-[#E8DED0] flex items-center justify-between">
+                      <h3 className="font-bold text-[#1F2937] text-sm flex items-center gap-2">
+                        <FileCode className="w-4 h-4 text-blue-600" /> Project Documents & Prompt Files ({projectDocs.length})
+                      </h3>
+                    </div>
+                    <div className="p-5 space-y-4">
+                      {projectDocs.length === 0 ? (
+                        <p className="text-xs text-[#737373] text-center py-4">No project documents or prompt files uploaded yet.</p>
+                      ) : (
+                        projectDocs.map((doc) => (
+                          <div key={doc.id} className="p-4 bg-[#FFFDF8] border border-[#E8DED0] rounded-xl space-y-3">
+                            <div className="flex justify-between items-start gap-2">
+                              <div>
+                                <h4 className="font-bold text-[#1F2937] text-sm">{doc.title}</h4>
+                                <p className="text-xs text-[#1E3A8A] font-medium">{doc.file_name}</p>
+                              </div>
+                              <span className="text-[10px] font-semibold text-[#6B7280] bg-[#F3F4F6] px-2 py-1 rounded">
+                                {new Date(doc.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="bg-[#F8F5F0]/70 rounded-lg p-3 border border-[#E8DED0]/60">
+                              <p className="text-xs text-[#4B5563] whitespace-pre-wrap">{doc.description}</p>
+                            </div>
+                            <div className="flex items-center gap-2 pt-1">
+                              <a
+                                href={doc.file_path}
+                                download={doc.file_name}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-[#E8DED0] hover:bg-[#F3EFE9] text-[#1E3A8A] text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                              >
+                                <Download className="w-3 h-3" />
+                                Download File
+                              </a>
+                              <a
+                                href={doc.file_path}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-[#6B5A4D] hover:underline"
+                              >
+                                Open in Tab <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Category 4: Overall Learning Process Notes */}
+                  <div className="bg-white rounded-2xl border border-[#E8DED0] overflow-hidden">
+                    <div className="bg-[#F8F5F0] px-5 py-3 border-b border-[#E8DED0] flex items-center justify-between">
+                      <h3 className="font-bold text-[#1F2937] text-sm flex items-center gap-2">
+                        <Compass className="w-4 h-4 text-[#1E3A8A]" /> Overall Learning Process Notes ({learningNotes.length})
+                      </h3>
+                    </div>
+                    <div className="p-5 space-y-4">
+                      {learningNotes.length === 0 ? (
+                        <p className="text-xs text-[#737373] text-center py-4">No learning process notes logged yet.</p>
+                      ) : (
+                        learningNotes.map((note) => (
+                          <div key={note.id} className="p-4 bg-[#FFFDF8] border border-[#E8DED0] rounded-xl space-y-3">
+                            <div className="flex justify-between items-start gap-2">
+                              <h4 className="font-bold text-[#1F2937] text-sm">{note.title}</h4>
+                              <span className="text-[10px] font-semibold text-[#6B7280] bg-[#F3F4F6] px-2 py-1 rounded">
+                                {new Date(note.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="bg-[#F8F5F0]/70 rounded-lg p-3 border border-[#E8DED0]/60">
+                              <p className="text-xs text-[#4B5563] whitespace-pre-wrap">{note.notes}</p>
+                            </div>
+                            {(note.challenges || note.key_milestones) && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                {note.challenges && (
+                                  <div className="p-2.5 bg-amber-50 rounded-lg border border-amber-100">
+                                    <span className="font-bold text-[#9A741E] block mb-0.5">Challenges:</span>
+                                    <p className="text-[#4B5563]">{note.challenges}</p>
+                                  </div>
+                                )}
+                                {note.key_milestones && (
+                                  <div className="p-2.5 bg-emerald-50 rounded-lg border border-emerald-100">
+                                    <span className="font-bold text-emerald-800 block mb-0.5">Milestones:</span>
+                                    <p className="text-[#4B5563]">{note.key_milestones}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))
                       )}

@@ -301,7 +301,7 @@ export const AdminStudentsTab: React.FC<AdminStudentsTabProps> = ({
                             {docCount}
                           </span>
                           <span className="text-[#E8DED0]">•</span>
-                          <span className="flex items-center gap-1 text-purple-600" title="English Summaries">
+                          <span className="flex items-center gap-1 text-[#1E3A8A]" title="English Summaries">
                             <Sparkles className="w-3 h-3" />
                             {engCount}
                           </span>

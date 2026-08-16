@@ -169,7 +169,7 @@ export const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
           className="bg-white p-6 rounded-2xl border border-[#E8DED0] hover:border-[#1E3A8A] shadow-xs hover:shadow-md transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#1E3A8A] flex items-center justify-center group-hover:scale-110 transition-transform">
               <Sparkles className="w-6 h-6" />
             </div>
             <ArrowUpRight className="w-4 h-4 text-[#A09080] group-hover:text-[#1E3A8A] transition-colors" />
@@ -177,7 +177,7 @@ export const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
           <p className="text-xs uppercase font-bold tracking-wider text-[#A09080] mb-1">English Summaries</p>
           <h3 className="text-3xl font-serif font-bold text-[#1F2937]">{totalEnglishSummaries}</h3>
           <p className="text-xs text-[#737373] mt-2 flex items-center gap-1">
-            <Calendar className="w-3.5 h-3.5 text-purple-600" />
+            <Calendar className="w-3.5 h-3.5 text-[#1E3A8A]" />
             Daily Learning Reflections
           </p>
         </div>
@@ -215,7 +215,7 @@ export const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
                           ? 'bg-blue-100 text-blue-700'
                           : act.type === 'academic'
                           ? 'bg-[#C5A880]/20 text-[#9C7A4A]'
-                          : 'bg-purple-100 text-purple-700'
+                          : 'bg-blue-100 text-[#1E3A8A]'
                       }`}
                     >
                       {act.type === 'document' ? (

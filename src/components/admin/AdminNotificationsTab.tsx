@@ -301,7 +301,7 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
                             className={`text-[10px] px-2 py-0.5 font-bold rounded-full uppercase ${
                               isBroadcast
                                 ? 'bg-blue-100 text-blue-800'
-                                : 'bg-purple-100 text-purple-800'
+                                : 'bg-[#1E3A8A]/10 text-[#1E3A8A]'
                             }`}
                           >
                             {isBroadcast ? '📢 Broadcast: All Students' : `👤 ${targetStudent?.full_name || 'Individual Student'}`}

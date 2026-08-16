@@ -138,7 +138,7 @@ export const AdminEnglishProgressTab: React.FC<AdminEnglishProgressTabProps> = (
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-serif font-bold text-[#1F2937]">{selectedStudent.full_name}</h3>
-                <span className="text-[10px] px-2 py-0.5 bg-purple-50 text-purple-700 font-bold rounded-full">
+                <span className="text-[10px] px-2 py-0.5 bg-blue-50 text-[#1E3A8A] font-bold rounded-full">
                   {selectedStudent.current_semester || 'Active'}
                 </span>
               </div>
@@ -234,7 +234,7 @@ export const AdminEnglishProgressTab: React.FC<AdminEnglishProgressTabProps> = (
                     isSelected
                       ? 'bg-[#1E3A8A] text-white font-bold shadow-xs'
                       : hasSummary
-                      ? 'bg-purple-50 hover:bg-purple-100 text-[#1F2937] font-bold border border-purple-200'
+                      ? 'bg-blue-50 hover:bg-blue-100 text-[#1F2937] font-bold border border-blue-200'
                       : 'hover:bg-[#FFFDF8] text-[#737373] border border-transparent'
                   } ${isToday && !isSelected ? 'ring-2 ring-[#C5A880]' : ''}`}
                 >
@@ -242,7 +242,7 @@ export const AdminEnglishProgressTab: React.FC<AdminEnglishProgressTabProps> = (
                   {hasSummary && (
                     <span
                       className={`w-1.5 h-1.5 rounded-full mt-0.5 ${
-                        isSelected ? 'bg-white' : 'bg-purple-600'
+                        isSelected ? 'bg-white' : 'bg-[#1E3A8A]'
                       }`}
                     />
                   )}
@@ -253,7 +253,7 @@ export const AdminEnglishProgressTab: React.FC<AdminEnglishProgressTabProps> = (
 
           <div className="flex items-center gap-4 mt-6 pt-4 border-t border-[#F3EFE9] text-xs text-[#737373]">
             <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-[#1E3A8A]"></span>
               <span>Summary Submitted</span>
             </div>
             <div className="flex items-center gap-1.5">

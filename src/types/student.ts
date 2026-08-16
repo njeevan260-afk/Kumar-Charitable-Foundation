@@ -103,4 +103,26 @@ export interface StudentSkillUpdate {
   created_at: string;
 }
 
+export interface StudentProjectDocument {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  file_path: string;
+  file_name: string;
+  file_type: string;
+  file_size?: number;
+  created_at: string;
+}
+
+export interface StudentLearningProcessNote {
+  id: string;
+  user_id: string;
+  title: string;
+  notes: string;
+  challenges?: string;
+  key_milestones?: string;
+  created_at: string;
+}
+
 
