@@ -6,7 +6,7 @@ import {
   StudentProjectDocument,
   StudentLearningProcessNote
 } from '../../types/student';
-import { resolveDocumentPreview } from '../../utils/documentViewer';
+import { resolveDocumentPreview, extractStoragePath } from '../../utils/documentViewer';
 import {
   Loader2,
   Plus,
@@ -292,34 +292,15 @@ export const StudentLogsTab: React.FC = () => {
     const storagePath = `project_docs/${studentId}/${Date.now()}_${cleanFileName}`;
 
     try {
-      let fileUrl = '';
-
-      // Try uploading to storage bucket
-      try {
-        const { error: uploadError } = await supabase.storage
-          .from('student-documents')
-          .upload(storagePath, selectedDocFile, {
-            cacheControl: '3600',
-            upsert: true,
-          });
-
-        if (!uploadError) {
-          const { data: publicUrlData } = supabase.storage
-            .from('student-documents')
-            .getPublicUrl(storagePath);
-          fileUrl = publicUrlData.publicUrl;
-        }
-      } catch (storageErr) {
-        console.warn('Storage upload note:', storageErr);
-      }
-
-      // Fallback to data URL
-      if (!fileUrl) {
-        fileUrl = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(selectedDocFile);
+      const { error: uploadError } = await supabase.storage
+        .from('student-documents')
+        .upload(storagePath, selectedDocFile, {
+          cacheControl: '3600',
+          upsert: true,
         });
+
+      if (uploadError) {
+        throw new Error(`Storage upload failed: ${uploadError.message}`);
       }
 
       const newDocPayload: StudentProjectDocument = {
@@ -327,7 +308,7 @@ export const StudentLogsTab: React.FC = () => {
         user_id: studentId,
         title: docForm.title.trim(),
         description: docForm.description.trim(),
-        file_path: fileUrl,
+        file_path: storagePath,
         file_name: selectedDocFile.name,
         file_type: selectedDocFile.type || 'application/octet-stream',
         file_size: selectedDocFile.size,
@@ -365,10 +346,10 @@ export const StudentLogsTab: React.FC = () => {
   const handleDeleteProjectDoc = async (id: string, filePath: string) => {
     if (!window.confirm('Are you sure you want to delete this project document?')) return;
     try {
-      if (filePath.includes('student-documents')) {
-        const pathAfter = filePath.split('student-documents/')[1];
-        if (pathAfter) {
-          await supabase.storage.from('student-documents').remove([pathAfter]);
+      if (filePath) {
+        const cleanPath = extractStoragePath(filePath);
+        if (cleanPath && !cleanPath.startsWith('http')) {
+          await supabase.storage.from('student-documents').remove([cleanPath]);
         }
       }
 
