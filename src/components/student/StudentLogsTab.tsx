@@ -6,6 +6,7 @@ import {
   StudentProjectDocument,
   StudentLearningProcessNote
 } from '../../types/student';
+import { generateUUID } from '../../utils/uuid';
 import { resolveDocumentPreview, extractStoragePath } from '../../utils/documentViewer';
 import {
   Loader2,
@@ -247,8 +248,10 @@ export const StudentLogsTab: React.FC = () => {
         '.png'
       ].some((ext) => lowerName.endsWith(ext));
 
-      if (!isValidExt && !ALLOWED_DOC_TYPES.includes(file.type)) {
-        setErrorMsg('Invalid file format. Please upload a Word document (.docx, .doc), PDF (.pdf), or text document (.txt, .md).');
+      const isPermittedType = ALLOWED_DOC_TYPES.includes(file.type) || file.type === 'application/octet-stream' || !file.type;
+
+      if (!isValidExt && !isPermittedType) {
+        setErrorMsg('Invalid file format. Please upload a Word document, PDF, or text document.');
         setSelectedDocFile(null);
         return;
       }
@@ -287,7 +290,7 @@ export const StudentLogsTab: React.FC = () => {
 
     const studentId = session.user.id;
     const now = new Date().toISOString();
-    const docId = crypto.randomUUID ? crypto.randomUUID() : `pdoc-${Date.now()}`;
+    const docId = generateUUID();
     const cleanFileName = selectedDocFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const storagePath = `project_docs/${studentId}/${Date.now()}_${cleanFileName}`;
 

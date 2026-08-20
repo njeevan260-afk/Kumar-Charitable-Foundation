@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AcademicRecord, ScoreType } from '../../types/student';
 import { supabase } from '../../supabaseClient';
+import { generateUUID } from '../../utils/uuid';
 import { BookOpen, Plus, Edit2, Trash2, X, Save, AlertCircle, CheckCircle2, Loader2, Calendar, Award } from 'lucide-react';
 
 interface StudentAcademicTabProps {
@@ -124,7 +125,7 @@ export const StudentAcademicTab: React.FC<StudentAcademicTabProps> = ({
         setSuccessMsg('Academic record updated successfully.');
       } else {
         // Create new record
-        const newRecordId = crypto.randomUUID ? crypto.randomUUID() : `rec-${Date.now()}`;
+        const newRecordId = generateUUID();
         const newRecordPayload: any = {
           id: newRecordId,
           user_id: studentId,

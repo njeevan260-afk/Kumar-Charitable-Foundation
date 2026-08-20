@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { AcademicDocument, DocumentType } from '../../types/student';
 import { supabase } from '../../supabaseClient';
 import { resolveDocumentPreview } from '../../utils/documentViewer';
+import { generateUUID } from '../../utils/uuid';
 import { UploadCloud, FileText, Trash2, Eye, ExternalLink, AlertCircle, CheckCircle2, Loader2, X, File, Image as ImageIcon, Download } from 'lucide-react';
 
 interface StudentDocumentsTabProps {
@@ -11,8 +12,8 @@ interface StudentDocumentsTabProps {
 }
 
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
-const MAX_PDF_SIZE = 2 * 1024 * 1024; // 2 MB (2,097,152 bytes)
-const MAX_IMAGE_SIZE = 50 * 1024;     // 50 KB (51,200 bytes)
+const MAX_PDF_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
   studentId,
@@ -97,14 +98,14 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
       }
 
       if (isPdf && file.size > MAX_PDF_SIZE) {
-        setErrorMsg('PDF file size exceeds the 2MB limit. Please upload a document up to 2MB.');
+        setErrorMsg('PDF file size exceeds the 5MB limit. Please upload a document up to 5MB.');
         setSelectedFile(null);
         return;
       }
 
       if (isImage && file.size > MAX_IMAGE_SIZE) {
         setErrorMsg(
-          `Image size (${(file.size / 1024).toFixed(1)} KB) exceeds the 50 KB limit. Please compress or resize the image to under 50 KB.`
+          `Image size (${(file.size / (1024 * 1024)).toFixed(1)} MB) exceeds the 5 MB limit. Please compress or resize the image to under 5 MB.`
         );
         setSelectedFile(null);
         return;
@@ -136,39 +137,20 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
     setSuccessMsg(null);
 
     const now = new Date().toISOString();
-    const docId = crypto.randomUUID ? crypto.randomUUID() : `doc-${Date.now()}`;
+    const docId = generateUUID();
     const cleanFileName = selectedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const storagePath = `${studentId}/${Date.now()}_${cleanFileName}`;
 
     try {
-      let fileUrl = '';
-
-      // Try uploading to Supabase Storage bucket 'student-documents'
-      try {
-        const { error: uploadError } = await supabase.storage
-          .from('student-documents')
-          .upload(storagePath, selectedFile, {
-            cacheControl: '3600',
-            upsert: true,
-          });
-
-        if (!uploadError) {
-          const { data: publicUrlData } = supabase.storage
-            .from('student-documents')
-            .getPublicUrl(storagePath);
-          fileUrl = publicUrlData.publicUrl;
-        }
-      } catch (storageErr) {
-        console.warn('Storage bucket upload notice:', storageErr);
-      }
-
-      // If storage bucket is not active, fallback to Object URL / Base64 for instant working preview
-      if (!fileUrl) {
-        fileUrl = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(selectedFile);
+      const { error: uploadError } = await supabase.storage
+        .from('student-documents')
+        .upload(storagePath, selectedFile, {
+          cacheControl: '3600',
+          upsert: true,
         });
+
+      if (uploadError) {
+        throw new Error(`Storage upload failed: ${uploadError.message}`);
       }
 
       const newDocPayload: any = {
@@ -176,9 +158,9 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
         user_id: studentId,
         semester,
         document_type: effectiveDocType,
-        file_path: fileUrl,
+        file_path: storagePath,
         file_name: selectedFile.name,
-        file_type: selectedFile.type,
+        file_type: selectedFile.type || 'application/octet-stream',
         file_size: selectedFile.size,
         uploaded_at: now,
       };
@@ -374,7 +356,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
                 <p className="text-xs text-[#737373] mt-1">
                   {selectedFile
                     ? `File size: ${formatFileSize(selectedFile.size)}`
-                    : 'Supported formats: PDF (up to 2MB), JPG, JPEG, PNG (up to 50KB)'}
+                    : 'Supported formats: PDF, JPG, JPEG, PNG (up to 5MB)'}
                 </p>
               </div>
             </div>

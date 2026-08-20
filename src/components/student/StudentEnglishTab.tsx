@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { EnglishLearningSummary } from '../../types/student';
 import { supabase } from '../../supabaseClient';
+import { generateUUID } from '../../utils/uuid';
 import { Sparkles, ExternalLink, Calendar, ChevronLeft, ChevronRight, Save, Trash2, Edit3, CheckCircle2, AlertCircle, Loader2, BookOpen, Clock } from 'lucide-react';
 
 interface StudentEnglishTabProps {
@@ -102,7 +103,7 @@ export const StudentEnglishTab: React.FC<StudentEnglishTabProps> = ({
         setTodaySuccess("Today's learning summary updated successfully!");
       } else {
         // Insert new entry
-        const newId = crypto.randomUUID ? crypto.randomUUID() : `eng-${Date.now()}`;
+        const newId = generateUUID();
         const newRecordPayload: any = {
           id: newId,
           user_id: studentId,
