@@ -480,7 +480,7 @@ export const StudentLogsTab: React.FC = () => {
       {/* Section Quick Navigation Pills */}
       <div className="bg-white rounded-2xl border border-[#E8DED0] p-4 shadow-sm flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <button
+          <button type="button"
             onClick={() => setActiveSectionView('all')}
             className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
               activeSectionView === 'all'
@@ -490,7 +490,7 @@ export const StudentLogsTab: React.FC = () => {
           >
             All Sections ({meetingNotes.length + skillUpdates.length + projectDocs.length + learningNotes.length})
           </button>
-          <button
+          <button type="button"
             onClick={() => setActiveSectionView('notes')}
             className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
               activeSectionView === 'notes'
@@ -501,7 +501,7 @@ export const StudentLogsTab: React.FC = () => {
             <BookOpen className="w-4 h-4 text-[#C49A3A]" />
             Meeting Notes ({meetingNotes.length})
           </button>
-          <button
+          <button type="button"
             onClick={() => setActiveSectionView('skills')}
             className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
               activeSectionView === 'skills'
@@ -512,7 +512,7 @@ export const StudentLogsTab: React.FC = () => {
             <Sparkles className="w-4 h-4 text-emerald-600" />
             Skills & Tech ({skillUpdates.length})
           </button>
-          <button
+          <button type="button"
             onClick={() => setActiveSectionView('project-docs')}
             className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
               activeSectionView === 'project-docs'
@@ -523,7 +523,7 @@ export const StudentLogsTab: React.FC = () => {
             <FileCode className="w-4 h-4 text-blue-600" />
             Project & Prompt Docs ({projectDocs.length})
           </button>
-          <button
+          <button type="button"
             onClick={() => setActiveSectionView('learning-process')}
             className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
               activeSectionView === 'learning-process'
@@ -538,14 +538,14 @@ export const StudentLogsTab: React.FC = () => {
 
         {/* Quick Add Buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          <button
+          <button type="button"
             onClick={() => setShowDocModal(true)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFDF8] border border-[#1E3A8A] text-[#1E3A8A] hover:bg-blue-50 rounded-xl text-xs font-bold transition-colors cursor-pointer"
           >
             <UploadCloud className="w-3.5 h-3.5" />
             Upload Project Doc
           </button>
-          <button
+          <button type="button"
             onClick={() => setShowLearningModal(true)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFDF8] border border-[#1E3A8A] text-[#1E3A8A] hover:bg-blue-50 rounded-xl text-xs font-bold transition-colors cursor-pointer"
           >
@@ -576,7 +576,7 @@ export const StudentLogsTab: React.FC = () => {
                         </h3>
                         <p className="text-xs text-[#737373] mt-0.5">Session summaries, takeaways, and feedback</p>
                       </div>
-                      <button
+                      <button type="button"
                         onClick={() => setShowNoteModal(true)}
                         className="bg-[#1E3A8A] text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold hover:bg-[#152C69] transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
                       >
@@ -640,7 +640,7 @@ export const StudentLogsTab: React.FC = () => {
                         </h3>
                         <p className="text-xs text-[#737373] mt-0.5">Track programming tools, AI models, and frameworks</p>
                       </div>
-                      <button
+                      <button type="button"
                         onClick={() => setShowSkillModal(true)}
                         className="bg-[#1E3A8A] text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold hover:bg-[#152C69] transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
                       >
@@ -700,7 +700,7 @@ export const StudentLogsTab: React.FC = () => {
                   </p>
                 </div>
 
-                <button
+                <button type="button"
                   onClick={() => setShowDocModal(true)}
                   className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1E3A8A] hover:bg-[#152C69] text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-xs cursor-pointer"
                 >
@@ -716,7 +716,7 @@ export const StudentLogsTab: React.FC = () => {
                   <p className="text-xs text-[#737373] max-w-md mx-auto mt-1">
                     Share your Prompt Document (Word .docx or PDF listing all AI prompts used), architecture guides, or project documentation so mentors and admins can review your workflow.
                   </p>
-                  <button
+                  <button type="button"
                     onClick={() => setShowDocModal(true)}
                     className="mt-4 px-4 py-2 bg-[#1E3A8A] text-white rounded-xl text-xs font-bold hover:bg-[#152C69] transition-colors cursor-pointer"
                   >
@@ -767,7 +767,7 @@ export const StudentLogsTab: React.FC = () => {
 
                         <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#F3EFE9]">
                           <div className="flex items-center gap-2">
-                            <button
+                            <button type="button"
                               onClick={() => setPreviewDoc(doc)}
                               className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1E3A8A] hover:underline cursor-pointer"
                             >
@@ -786,7 +786,7 @@ export const StudentLogsTab: React.FC = () => {
                             </a>
                           </div>
 
-                          <button
+                          <button type="button"
                             onClick={() => handleDeleteProjectDoc(doc.id, doc.file_path)}
                             className="p-1.5 text-[#737373] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                             title="Delete file"
@@ -820,7 +820,7 @@ export const StudentLogsTab: React.FC = () => {
                   </p>
                 </div>
 
-                <button
+                <button type="button"
                   onClick={() => setShowLearningModal(true)}
                   className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1E3A8A] hover:bg-[#152C69] text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-xs cursor-pointer"
                 >
@@ -836,7 +836,7 @@ export const StudentLogsTab: React.FC = () => {
                   <p className="text-xs text-[#737373] max-w-md mx-auto mt-1">
                     Reflect on your overall educational journey: learning velocity, problem-solving strategies, architecture roadblocks overcome, and self-assessments.
                   </p>
-                  <button
+                  <button type="button"
                     onClick={() => setShowLearningModal(true)}
                     className="mt-4 px-4 py-2 bg-[#1E3A8A] text-white rounded-xl text-xs font-bold hover:bg-[#152C69] transition-colors cursor-pointer"
                   >
@@ -862,7 +862,7 @@ export const StudentLogsTab: React.FC = () => {
                             <Calendar className="w-3.5 h-3.5 text-[#1E3A8A]" />
                             {new Date(note.created_at).toLocaleDateString()}
                           </span>
-                          <button
+                          <button type="button"
                             onClick={() => handleDeleteLearningNote(note.id)}
                             className="p-1.5 text-[#737373] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                             title="Delete note"
@@ -928,7 +928,7 @@ export const StudentLogsTab: React.FC = () => {
             >
               <div className="flex-shrink-0 flex items-center justify-between p-5 sm:p-6 border-b border-[#E8DED0] bg-[#F8F5F0]">
                 <h3 className="text-lg font-bold text-[#1F2937]">Add Meeting Note</h3>
-                <button
+                <button type="button"
                   onClick={() => setShowNoteModal(false)}
                   className="text-[#6B7280] hover:text-[#1F2937] transition-colors cursor-pointer"
                 >
@@ -983,13 +983,13 @@ export const StudentLogsTab: React.FC = () => {
                 </div>
               </div>
               <div className="flex-shrink-0 p-5 sm:p-6 border-t border-[#E8DED0] bg-[#F9FAFB] flex flex-col sm:flex-row justify-end gap-3">
-                <button
+                <button type="button"
                   onClick={() => setShowNoteModal(false)}
                   className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-[#4B5563] hover:text-[#111827] hover:bg-[#E5E7EB] rounded-xl transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
-                <button
+                <button type="button"
                   onClick={handleSaveNote}
                   disabled={submitting}
                   className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-white bg-[#1E3A8A] hover:bg-[#152C69] rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
@@ -1014,7 +1014,7 @@ export const StudentLogsTab: React.FC = () => {
             >
               <div className="flex-shrink-0 flex items-center justify-between p-5 sm:p-6 border-b border-[#E8DED0] bg-[#F8F5F0]">
                 <h3 className="text-lg font-bold text-[#1F2937]">Log New Skill / Technology</h3>
-                <button
+                <button type="button"
                   onClick={() => setShowSkillModal(false)}
                   className="text-[#6B7280] hover:text-[#1F2937] transition-colors cursor-pointer"
                 >
@@ -1049,13 +1049,13 @@ export const StudentLogsTab: React.FC = () => {
                 </div>
               </div>
               <div className="flex-shrink-0 p-5 sm:p-6 border-t border-[#E8DED0] bg-[#F9FAFB] flex flex-col sm:flex-row justify-end gap-3">
-                <button
+                <button type="button"
                   onClick={() => setShowSkillModal(false)}
                   className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-[#4B5563] hover:text-[#111827] hover:bg-[#E5E7EB] rounded-xl transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
-                <button
+                <button type="button"
                   onClick={handleSaveSkill}
                   disabled={submitting}
                   className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-white bg-[#1E3A8A] hover:bg-[#152C69] rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
@@ -1083,7 +1083,7 @@ export const StudentLogsTab: React.FC = () => {
                   <UploadCloud className="w-5 h-5 text-[#1E3A8A]" />
                   <h3 className="text-lg font-bold text-[#1F2937]">Upload Project & Prompt Document</h3>
                 </div>
-                <button
+                <button type="button"
                   onClick={() => {
                     setShowDocModal(false);
                     setErrorMsg(null);
@@ -1137,13 +1137,15 @@ export const StudentLogsTab: React.FC = () => {
                   </label>
                   <div className="border-2 border-dashed border-[#D1D5DB] hover:border-[#1E3A8A] rounded-2xl p-6 text-center bg-[#FFFDF8] transition-colors cursor-pointer relative">
                     <input
+                      id="log-file-upload"
                       ref={fileInputRef}
                       type="file"
-                      accept=".docx,.doc,.pdf,.txt,.md,.rtf"
+                      accept=".docx,.doc,.pdf,.txt,.md,.rtf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
                       onChange={handleFileSelection}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      onClick={(e) => { e.currentTarget.value = ''; }}
+                      className="hidden"
                     />
-                    <div className="flex flex-col items-center">
+                    <label htmlFor="log-file-upload" className="flex flex-col items-center w-full h-full cursor-pointer">
                       <FileCheck className="w-10 h-10 text-[#1E3A8A] mb-2" />
                       <p className="text-sm font-semibold text-[#1F2937]">
                         {selectedDocFile ? selectedDocFile.name : 'Click to select or drag & drop file'}
@@ -1153,13 +1155,13 @@ export const StudentLogsTab: React.FC = () => {
                           ? `Size: ${formatFileSize(selectedDocFile.size)}`
                           : 'Supports Word (.docx, .doc), PDF (.pdf), Text (.txt, .md)'}
                       </p>
-                    </div>
+                    </label>
                   </div>
                 </div>
               </div>
 
               <div className="flex-shrink-0 p-5 sm:p-6 border-t border-[#E8DED0] bg-[#F9FAFB] flex flex-col sm:flex-row justify-end gap-3">
-                <button
+                <button type="button"
                   onClick={() => {
                     setShowDocModal(false);
                     setErrorMsg(null);
@@ -1168,7 +1170,7 @@ export const StudentLogsTab: React.FC = () => {
                 >
                   Cancel
                 </button>
-                <button
+                <button type="button"
                   onClick={handleUploadProjectDoc}
                   disabled={submitting || !selectedDocFile}
                   className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-white bg-[#1E3A8A] hover:bg-[#152C69] rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
@@ -1197,7 +1199,7 @@ export const StudentLogsTab: React.FC = () => {
                   <Compass className="w-5 h-5 text-[#1E3A8A]" />
                   <h3 className="text-lg font-bold text-[#1F2937]">Add Learning Process Note</h3>
                 </div>
-                <button
+                <button type="button"
                   onClick={() => {
                     setShowLearningModal(false);
                     setErrorMsg(null);
@@ -1270,7 +1272,7 @@ export const StudentLogsTab: React.FC = () => {
               </div>
 
               <div className="flex-shrink-0 p-5 sm:p-6 border-t border-[#E8DED0] bg-[#F9FAFB] flex flex-col sm:flex-row justify-end gap-3">
-                <button
+                <button type="button"
                   onClick={() => {
                     setShowLearningModal(false);
                     setErrorMsg(null);
@@ -1279,7 +1281,7 @@ export const StudentLogsTab: React.FC = () => {
                 >
                   Cancel
                 </button>
-                <button
+                <button type="button"
                   onClick={handleSaveLearningNote}
                   disabled={submitting}
                   className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-white bg-[#1E3A8A] hover:bg-[#152C69] rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
@@ -1328,7 +1330,7 @@ export const StudentLogsTab: React.FC = () => {
                     </a>
                   </>
                 )}
-                <button
+                <button type="button"
                   onClick={() => {
                     setPreviewDoc(null);
                     setPreviewUrl('');

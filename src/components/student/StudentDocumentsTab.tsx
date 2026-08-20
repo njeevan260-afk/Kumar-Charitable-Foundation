@@ -342,13 +342,15 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
             </label>
             <div className="border-2 border-dashed border-[#E8DED0] hover:border-[#1E3A8A] rounded-2xl p-6 text-center bg-[#FFFDF8] transition-colors cursor-pointer relative">
               <input
+                id="doc-file-upload"
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,.jpg,.jpeg,.png"
+                accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
                 onChange={handleFileChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                onClick={(e) => { e.currentTarget.value = ''; }}
+                className="hidden"
               />
-              <div className="flex flex-col items-center">
+              <label htmlFor="doc-file-upload" className="flex flex-col items-center w-full h-full cursor-pointer">
                 <UploadCloud className="w-10 h-10 text-[#1E3A8A] mb-2" />
                 <p className="text-sm font-semibold text-[#1F2937]">
                   {selectedFile ? selectedFile.name : 'Click or drag and drop document here'}
@@ -358,7 +360,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
                     ? `File size: ${formatFileSize(selectedFile.size)}`
                     : 'Supported formats: PDF, JPG, JPEG, PNG (up to 5MB)'}
                 </p>
-              </div>
+              </label>
             </div>
           </div>
 
@@ -419,7 +421,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
                   </div>
 
                   <div className="flex items-center justify-between pt-3 border-t border-[#F3EFE9]">
-                    <button
+                    <button type="button"
                       onClick={() => setPreviewDoc(doc)}
                       className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1E3A8A] hover:underline cursor-pointer"
                     >
@@ -428,7 +430,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
                     </button>
 
                     <div className="flex items-center gap-2">
-                      <button
+                      <button type="button"
                         onClick={() => handleDelete(doc.id, doc.file_path)}
                         className="p-1.5 text-[#737373] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                         title="Delete Document"
@@ -479,7 +481,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
                     </a>
                   </>
                 )}
-                <button
+                <button type="button"
                   onClick={() => {
                     setPreviewDoc(null);
                     setResolvedUrl('');
