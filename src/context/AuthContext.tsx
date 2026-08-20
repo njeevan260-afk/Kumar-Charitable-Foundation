@@ -208,13 +208,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const newUserId = session?.user?.id ?? null;
+
+      // Repeat events for the same signed-in user (tab focus, token refresh,
+      // mobile file-picker returning focus to the tab) are a no-op — don't
+      // touch state at all, so nothing downstream re-renders or re-fetches.
+      if (newUserId === currentUserIdRef.current) {
+        return;
+      }
+      currentUserIdRef.current = newUserId;
+
       setSession(session);
       setUser(session?.user ?? null);
-
-      // Ignore re-fired events for the same signed-in user (e.g. tab focus,
-      // token refresh) — only react when the user actually changes.
-      if (newUserId === currentUserIdRef.current) return;
-      currentUserIdRef.current = newUserId;
 
       if (session?.user) {
         setLoading(true);

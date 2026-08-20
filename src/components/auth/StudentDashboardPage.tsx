@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
@@ -305,7 +305,9 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ setA
     } finally {
       setDataLoading(false);
     }
-  }, [user]);
+  }, [user?.id]);
+
+  const loadedUserIdRef = useRef<string | null>(null);
 
   // Auth gate check
   useEffect(() => {
@@ -314,10 +316,12 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ setA
       const isAdmin = currentRole === 'admin' || currentRole === 'administrator';
 
       if (!user) {
+        loadedUserIdRef.current = null;
         setActiveTab('student-login');
       } else if (isAdmin) {
         setActiveTab('admin-dashboard');
-      } else {
+      } else if (loadedUserIdRef.current !== user.id) {
+        loadedUserIdRef.current = user.id;
         loadStudentData(user.id);
       }
     }

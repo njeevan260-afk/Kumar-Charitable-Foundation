@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
@@ -109,15 +109,21 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiv
     user?.user_metadata?.role === 'admin' ||
     user?.app_metadata?.role === 'admin';
 
+  const loadedUserIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!authLoading && !sessionChecking) {
       if (!user) {
+        loadedUserIdRef.current = null;
         setActiveTab('admin-login');
       } else if (!isAdminUser && role === 'student') {
         setActiveTab('student-dashboard');
+      } else if (loadedUserIdRef.current !== user.id) {
+        loadedUserIdRef.current = user.id;
+        loadAdminData();
       }
     }
-  }, [user, role, profile, authLoading, sessionChecking, isAdminUser, setActiveTab]);
+  }, [user, role, profile, authLoading, sessionChecking, isAdminUser, setActiveTab, loadAdminData]);
 
   // Load all real Supabase Data for Admin
   const loadAdminData = useCallback(async () => {
@@ -286,13 +292,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiv
       setDataLoading(false);
       setRefreshing(false);
     }
-  }, [user]);
-
-  useEffect(() => {
-    if (user && (role === 'admin' || isAdminUser)) {
-      loadAdminData();
-    }
-  }, [user, role, isAdminUser, loadAdminData]);
+  }, [user?.id, user?.email]);
 
   const handleManualRefresh = async () => {
     setRefreshing(true);
