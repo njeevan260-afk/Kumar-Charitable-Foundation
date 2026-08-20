@@ -59,6 +59,11 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ setA
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
+  const [hasInitialized, setHasInitialized] = useState(false);
+  useEffect(() => {
+    if (!authLoading) setHasInitialized(true);
+  }, [authLoading]);
+
   // Auto-redirect if user is an admin or unauthenticated
   useEffect(() => {
     if (!authLoading) {
@@ -325,7 +330,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ setA
 
   const unreadNotificationsCount = notifications.filter((n) => !n.is_read).length;
 
-  if (authLoading || (!user && !authLoading) || role !== 'student') {
+  if (!hasInitialized || (!user && !authLoading) || role !== 'student') {
     return (
       <div className="w-full min-h-[60vh] flex items-center justify-center py-24">
         <div className="flex flex-col items-center gap-4">

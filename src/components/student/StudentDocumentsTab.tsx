@@ -188,7 +188,7 @@ export const StudentDocumentsTab: React.FC<StudentDocumentsTabProps> = ({
         user_id: studentId,
         semester,
         document_type: effectiveDocType,
-        file_path: fileUrl,
+        file_path: storagePath,
         file_name: selectedFile.name,
         file_type: selectedFile.type,
         file_size: selectedFile.size,

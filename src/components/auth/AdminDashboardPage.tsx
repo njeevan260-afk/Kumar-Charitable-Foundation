@@ -69,6 +69,11 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiv
   const [dataLoading, setDataLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const [hasInitialized, setHasInitialized] = useState(false);
+  useEffect(() => {
+    if (!authLoading) setHasInitialized(true);
+  }, [authLoading]);
+
   // Selected Student for detailed inspection modal
   const [inspectedStudent, setInspectedStudent] = useState<StudentProfile | null>(null);
 
@@ -299,7 +304,7 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiv
     setActiveTab('home');
   };
 
-  if (authLoading || sessionChecking || !user || (!isAdminUser && role !== 'admin')) {
+  if (!hasInitialized || sessionChecking || !user || (!isAdminUser && role !== 'admin')) {
     return (
       <div className="w-full min-h-[60vh] flex items-center justify-center py-24">
         <div className="flex flex-col items-center gap-4">

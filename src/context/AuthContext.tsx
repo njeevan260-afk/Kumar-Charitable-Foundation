@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../supabaseClient';
 
@@ -190,11 +190,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const currentUserIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    // Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      currentUserIdRef.current = session?.user?.id ?? null;
       if (session?.user) {
         fetchProfile(session.user.id, session.user).then(() => setLoading(false));
       } else {
@@ -202,20 +204,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const newUserId = session?.user?.id ?? null;
       setSession(session);
       setUser(session?.user ?? null);
+
+      // Ignore re-fired events for the same signed-in user (e.g. tab focus,
+      // token refresh) — only react when the user actually changes.
+      if (newUserId === currentUserIdRef.current) return;
+      currentUserIdRef.current = newUserId;
+
       if (session?.user) {
         setLoading(true);
         await fetchProfile(session.user.id, session.user);
+        setLoading(false);
       } else {
         setProfile(null);
         setRole(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
