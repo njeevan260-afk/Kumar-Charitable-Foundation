@@ -109,22 +109,6 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiv
     user?.user_metadata?.role === 'admin' ||
     user?.app_metadata?.role === 'admin';
 
-  const loadedUserIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!authLoading && !sessionChecking) {
-      if (!user) {
-        loadedUserIdRef.current = null;
-        setActiveTab('admin-login');
-      } else if (!isAdminUser && role === 'student') {
-        setActiveTab('student-dashboard');
-      } else if (loadedUserIdRef.current !== user.id) {
-        loadedUserIdRef.current = user.id;
-        loadAdminData();
-      }
-    }
-  }, [user, role, profile, authLoading, sessionChecking, isAdminUser, setActiveTab, loadAdminData]);
-
   // Load all real Supabase Data for Admin
   const loadAdminData = useCallback(async () => {
     try {
@@ -293,6 +277,23 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiv
       setRefreshing(false);
     }
   }, [user?.id, user?.email]);
+
+  const loadedUserIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !sessionChecking) {
+      if (!user) {
+        loadedUserIdRef.current = null;
+        setActiveTab('admin-login');
+      } else if (!isAdminUser && role === 'student') {
+        setActiveTab('student-dashboard');
+      } else if (loadedUserIdRef.current !== user.id) {
+        loadedUserIdRef.current = user.id;
+        loadAdminData();
+      }
+    }
+  }, [user, role, profile, authLoading, sessionChecking, isAdminUser, setActiveTab, loadAdminData]);
+
 
   const handleManualRefresh = async () => {
     setRefreshing(true);

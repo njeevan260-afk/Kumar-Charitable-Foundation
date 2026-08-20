@@ -1,0 +1,185 @@
+  const loadedUserIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !sessionChecking) {
+      if (!user) {
+        loadedUserIdRef.current = null;
+        setActiveTab('admin-login');
+      } else if (!isAdminUser && role === 'student') {
+        setActiveTab('student-dashboard');
+      } else if (loadedUserIdRef.current !== user.id) {
+        loadedUserIdRef.current = user.id;
+        loadAdminData();
+      }
+    }
+  }, [user, role, profile, authLoading, sessionChecking, isAdminUser, setActiveTab, loadAdminData]);
+
+  // Load all real Supabase Data for Admin
+  const loadAdminData = useCallback(async () => {
+    try {
+      // 1. Fetch Students (profiles where role != 'admin')
+      let fetchedProfiles: StudentProfile[] = [];
+      
+      // Try using the secure RPC function first (bypasses RLS issues)
+      const { data: rpcData, error: rpcError } = await supabase.rpc('admin_get_all_students');
+      
+      let profilesData = null;
+      
+      if (!rpcError && rpcData) {
+        profilesData = rpcData;
+      } else {
+        // Fallback to table if RPC is not available
+        const { data: tableData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
+          
+        if (profilesError) {
+          console.warn('Profiles query error (check RLS policies):', profilesError.message);
+        }
+        profilesData = tableData;
+      }
+
+      // Helper to normalize profile fields from columns or metadata
+      const normalizeStudentProfile = (p: any): StudentProfile => {
+        let meta = p.metadata;
+        if (typeof meta === 'string') {
+          try {
+            meta = JSON.parse(meta);
+          } catch (e) {
+            meta = {};
+          }
+        }
+        meta = meta || {};
+
+        return {
+          ...p,
+          full_name: p.full_name || meta.full_name || 'Student',
+          mobile_number: p.mobile_number || meta.mobile_number || '',
+          college_name: p.college_name || meta.college_name || '',
+          course: p.course || meta.course || '',
+          branch: p.branch || meta.branch || '',
+          current_semester: p.current_semester || meta.current_semester || '',
+          metadata: meta,
+        };
+      };
+
+      if (profilesData && Array.isArray(profilesData)) {
+        fetchedProfiles = (profilesData as any[])
+          .filter((p) => {
+            const r = p.role ? String(p.role).toLowerCase().trim() : '';
+            return r !== 'admin' && r !== 'administrator' && p.id !== user?.id && p.email !== user?.email;
+          })
+          .map(normalizeStudentProfile);
+      }
+
+      // 2. Fetch All Academic Records
+      let normalizedRecords: AcademicRecord[] = [];
+      const { data: recordsData } = await supabase
+        .from('academic_records')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (recordsData) {
+        normalizedRecords = (recordsData as any[]).map((r) => ({
+          ...r,
+          user_id: r.user_id || r.student_id || '',
+        }));
+        setAcademicRecords(normalizedRecords);
+      }
+
+      // 3. Fetch All Academic Documents
+      let normalizedDocs: AcademicDocument[] = [];
+      const { data: docsData } = await supabase
+        .from('academic_documents')
+        .select('*')
+        .order('uploaded_at', { ascending: false });
+
+      if (docsData) {
+        normalizedDocs = (docsData as any[]).map((d) => ({
+          ...d,
+          user_id: d.user_id || d.student_id || '',
+        }));
+        setDocuments(normalizedDocs);
+      }
+
+      // 4. Fetch All English Learning Summaries
+      let normalizedSummaries: EnglishLearningSummary[] = [];
+      const { data: summariesData } = await supabase
+        .from('english_learning_summaries')
+        .select('*')
+        .order('entry_date', { ascending: false });
+
+      if (summariesData) {
+        normalizedSummaries = (summariesData as any[]).map((s) => ({
+          ...s,
+          user_id: s.user_id || s.student_id || '',
+        }));
+        setEnglishSummaries(normalizedSummaries);
+      }
+
+      // Cross-reference all student user IDs from records, docs, and reflections
+      const profileMap = new Map<string, StudentProfile>();
+      fetchedProfiles.forEach((p) => {
+        if (p.id && p.id !== user?.id && p.email !== user?.email) {
+          profileMap.set(p.id, p);
+        }
+      });
+
+      const allReferencedStudentIds = new Set<string>();
+      normalizedRecords.forEach((r) => r.user_id && r.user_id !== user?.id && allReferencedStudentIds.add(r.user_id));
+      normalizedDocs.forEach((d) => d.user_id && d.user_id !== user?.id && allReferencedStudentIds.add(d.user_id));
+      normalizedSummaries.forEach((s) => s.user_id && s.user_id !== user?.id && allReferencedStudentIds.add(s.user_id));
+
+      for (const sid of allReferencedStudentIds) {
+        if (!profileMap.has(sid)) {
+          // Attempt direct lookup for this single user
+          try {
+            const { data: singleProfile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', sid)
+              .maybeSingle();
+
+            const r = singleProfile?.role ? String(singleProfile.role).toLowerCase().trim() : '';
+            if (singleProfile && r !== 'admin' && r !== 'administrator') {
+              profileMap.set(sid, normalizeStudentProfile(singleProfile));
+              continue;
+            }
+          } catch (e) {}
+
+          // Fallback synthesized student record if missing from database
+          profileMap.set(sid, {
+            id: sid,
+            full_name: `Student (${sid.slice(0, 6)})`,
+            email: 'Unknown Email',
+            role: 'student',
+            college_name: 'Not provided',
+            course: 'Not provided',
+            branch: '',
+            current_semester: 'Not provided',
+            metadata: {},
+            created_at: new Date().toISOString(),
+          });
+        }
+      }
+
+      const finalStudents = Array.from(profileMap.values());
+      setStudents(finalStudents);
+
+      // 5. Fetch Notifications
+      const { data: notifData } = await supabase
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (notifData) {
+        setNotifications(notifData as NotificationItem[]);
+      }
+    } catch (err) {
+    } finally {
+      setDataLoading(false);
+      setRefreshing(false);
+    }
+  }, [user?.id, user?.email]);
+
