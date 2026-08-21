@@ -239,7 +239,7 @@ export const AdminProjectsTab: React.FC<AdminProjectsTabProps> = ({ students }) 
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-[#3B2A20] truncate group-hover:text-[#1E3A8A]">
-                              {doc.file_name}
+                              {doc.title || 'Project Document'}
                             </p>
                             <p className="text-xs text-[#737373] mt-0.5 capitalize">
                               {doc.file_type || 'Document'}

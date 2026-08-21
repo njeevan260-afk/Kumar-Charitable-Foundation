@@ -454,7 +454,7 @@ export const AdminStudentDetailModal: React.FC<AdminStudentDetailModalProps> = (
                           <FileText className="w-4 h-4" />
                         </div>
                         <div className="overflow-hidden">
-                          <p className="text-xs font-bold text-[#1F2937] truncate">{doc.file_name}</p>
+                          <p className="text-xs font-bold text-[#1F2937] truncate">{doc.document_type} Document</p>
                           <p className="text-[11px] text-[#737373] mt-0.5">
                             {doc.semester} • {doc.document_type}
                           </p>
@@ -601,7 +601,7 @@ export const AdminStudentDetailModal: React.FC<AdminStudentDetailModalProps> = (
                             <div className="flex justify-between items-start gap-2">
                               <div>
                                 <h4 className="font-bold text-[#1F2937] text-sm">{doc.title}</h4>
-                                <p className="text-xs text-[#1E3A8A] font-medium">{doc.file_name}</p>
+                                <p className="text-xs text-[#1E3A8A] font-medium capitalize">{doc.file_type || 'Document'}</p>
                               </div>
                               <span className="text-[10px] font-semibold text-[#6B7280] bg-[#F3F4F6] px-2 py-1 rounded">
                                 {new Date(doc.created_at).toLocaleDateString()}

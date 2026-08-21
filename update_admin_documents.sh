@@ -1,3 +1,4 @@
+cat << 'INNER_EOF' > src/components/admin/AdminDocumentsTab.tsx
 import React, { useState, useMemo, useEffect } from 'react';
 import { AcademicDocument, StudentProfile } from '../../types/student';
 import { resolveDocumentPreview } from '../../utils/documentViewer';
@@ -148,8 +149,8 @@ export const AdminDocumentsTab: React.FC<AdminDocumentsTabProps> = ({
           <h2 className="text-xl md:text-2xl font-serif font-bold text-[#1F2937]">Student Documents</h2>
           <p className="text-xs text-[#737373] mt-0.5">
             {selectedStudentForDocs 
-              ? `Viewing ${selectedStudentDocuments.length} documents for ${selectedStudentForDocs.full_name}`
-              : `${studentDocCounts.length} students have uploaded a total of ${documents.length} documents.`
+              ? \`Viewing \${selectedStudentDocuments.length} documents for \${selectedStudentForDocs.full_name}\`
+              : \`\${studentDocCounts.length} students have uploaded a total of \${documents.length} documents.\`
             }
           </p>
         </div>
@@ -259,9 +260,10 @@ export const AdminDocumentsTab: React.FC<AdminDocumentsTabProps> = ({
                     {doc.semester}
                   </span>
                 </div>
-                <h3 className="text-sm font-bold text-[#1F2937] truncate mb-3" title={doc.document_type}>
-                  {doc.document_type} Document
+                <h3 className="text-sm font-bold text-[#1F2937] truncate mb-1" title={doc.file_name}>
+                  {doc.file_name}
                 </h3>
+                <p className="text-xs text-[#A09080] font-semibold mb-3">{doc.document_type}</p>
                 
                 <div className="pt-3 border-t border-[#F3EFE9] space-y-1 text-xs text-[#737373]">
                   <div className="flex items-center justify-between">
@@ -292,7 +294,7 @@ export const AdminDocumentsTab: React.FC<AdminDocumentsTabProps> = ({
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#F3EFE9]">
               <div className="min-w-0 pr-4">
-                <h3 className="text-base font-bold text-[#1F2937] truncate">{previewDoc.document_type} Document</h3>
+                <h3 className="text-base font-bold text-[#1F2937] truncate">{previewDoc.file_name}</h3>
                 <p className="text-xs text-[#737373] truncate">
                   {previewDoc.semester} • {previewDoc.document_type} • Student:{' '}
                   <span className="font-bold text-[#1F2937]">
@@ -409,3 +411,4 @@ export const AdminDocumentsTab: React.FC<AdminDocumentsTabProps> = ({
     </div>
   );
 };
+INNER_EOF

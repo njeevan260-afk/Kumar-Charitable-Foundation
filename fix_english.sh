@@ -1,3 +1,4 @@
+cat << 'INNER_EOF' > src/components/admin/AdminEnglishProgressTab.tsx
 import React, { useState, useMemo } from 'react';
 import { EnglishLearningSummary, StudentProfile } from '../../types/student';
 import {
@@ -71,7 +72,7 @@ export const AdminEnglishProgressTab: React.FC<AdminEnglishProgressTabProps> = (
     setCurrentDate(new Date(year, month + 1, 1));
   };
 
-  const currentYearMonth = `${year}-${String(month + 1).padStart(2, '0')}`;
+  const currentYearMonth = \`\${year}-\${String(month + 1).padStart(2, '0')}\`;
   const thisMonthSummaries = studentSummaries.filter((s) => s.entry_date.startsWith(currentYearMonth));
   
   // Selected date summary
@@ -110,7 +111,7 @@ export const AdminEnglishProgressTab: React.FC<AdminEnglishProgressTabProps> = (
           <h2 className="text-xl md:text-2xl font-serif font-bold text-[#1F2937]">English Companion Progress</h2>
           <p className="text-xs text-[#737373] mt-0.5">
             {selectedStudent 
-              ? `Reviewing English progress for ${selectedStudent.full_name}`
+              ? \`Reviewing English progress for \${selectedStudent.full_name}\`
               : 'Review student daily learning reflections, streaks, and monthly progress'
             }
           </p>
@@ -255,11 +256,11 @@ export const AdminEnglishProgressTab: React.FC<AdminEnglishProgressTabProps> = (
             {/* Calendar Grid */}
             <div className="grid grid-cols-7 gap-1.5">
               {Array.from({ length: firstDayIndex }).map((_, i) => (
-                <div key={`empty-${i}`} className="h-12 rounded-xl bg-transparent" />
+                <div key={\`empty-\${i}\`} className="h-12 rounded-xl bg-transparent" />
               ))}
               {Array.from({ length: daysInMonth }).map((_, i) => {
                 const day = i + 1;
-                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dateStr = \`\${year}-\${String(month + 1).padStart(2, '0')}-\${String(day).padStart(2, '0')}\`;
                 const hasSummary = summariesByDate.has(dateStr);
                 const isSelected = selectedDateStr === dateStr;
                 const isToday = new Date().toISOString().split('T')[0] === dateStr;
@@ -268,20 +269,20 @@ export const AdminEnglishProgressTab: React.FC<AdminEnglishProgressTabProps> = (
                   <button
                     key={dateStr}
                     onClick={() => setSelectedDateStr(dateStr)}
-                    className={`h-12 rounded-xl flex flex-col items-center justify-center relative transition-all cursor-pointer ${
+                    className={\`h-12 rounded-xl flex flex-col items-center justify-center relative transition-all cursor-pointer \${
                       isSelected
                         ? 'bg-[#1E3A8A] text-white font-bold shadow-xs'
                         : hasSummary
                         ? 'bg-blue-50 hover:bg-blue-100 text-[#1F2937] font-bold border border-blue-200'
                         : 'hover:bg-[#FFFDF8] text-[#737373] border border-transparent'
-                    } ${isToday && !isSelected ? 'ring-2 ring-[#C5A880]' : ''}`}
+                    } \${isToday && !isSelected ? 'ring-2 ring-[#C5A880]' : ''}\`}
                   >
                     <span className="text-xs">{day}</span>
                     {hasSummary && (
                       <span
-                        className={`w-1.5 h-1.5 rounded-full mt-0.5 ${
+                        className={\`w-1.5 h-1.5 rounded-full mt-0.5 \${
                           isSelected ? 'bg-white' : 'bg-[#1E3A8A]'
-                        }`}
+                        }\`}
                       />
                     )}
                   </button>
@@ -377,11 +378,11 @@ export const AdminEnglishProgressTab: React.FC<AdminEnglishProgressTabProps> = (
                     <button
                       key={sum.id}
                       onClick={() => setSelectedDateStr(sum.entry_date)}
-                      className={`w-full flex items-center justify-between p-2 rounded-lg text-xs text-left transition-colors cursor-pointer ${
+                      className={\`w-full flex items-center justify-between p-2 rounded-lg text-xs text-left transition-colors cursor-pointer \${
                         selectedDateStr === sum.entry_date
                           ? 'bg-[#1E3A8A] text-white font-bold'
                           : 'bg-[#FFFDF8] hover:bg-[#F3EFE9] text-[#1F2937] border border-[#E8DED0]'
-                      }`}
+                      }\`}
                     >
                       <span className="font-medium">{sum.entry_date}</span>
                       <span className="truncate max-w-[160px] opacity-80">{sum.summary}</span>
@@ -396,3 +397,4 @@ export const AdminEnglishProgressTab: React.FC<AdminEnglishProgressTabProps> = (
     </div>
   );
 };
+INNER_EOF

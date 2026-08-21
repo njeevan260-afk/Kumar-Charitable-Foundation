@@ -308,8 +308,8 @@ export const AdminLogsTab: React.FC<AdminLogsTabProps> = ({ students, onSelectSt
         </div>
       </div>
 
-      {/* Metrics Row (5 Cards) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      {/* Metrics Row (4 Cards) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white rounded-2xl border border-[#E8DED0] p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-[#6B5A4D] uppercase tracking-wider">Total Submissions</span>
@@ -344,17 +344,6 @@ export const AdminLogsTab: React.FC<AdminLogsTabProps> = ({ students, onSelectSt
         </div>
 
         <div className="bg-white rounded-2xl border border-[#E8DED0] p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#6B5A4D] uppercase tracking-wider">Project & Prompts</span>
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-              <FileCode className="w-4 h-4" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-[#1F2937] mt-3">{0}</p>
-          <p className="text-[11px] text-[#737373] mt-0.5">Docx, PDFs & prompts</p>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-[#E8DED0] p-5 shadow-sm col-span-2 sm:col-span-1">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-[#6B5A4D] uppercase tracking-wider">Learning Process</span>
             <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#1E3A8A] flex items-center justify-center">

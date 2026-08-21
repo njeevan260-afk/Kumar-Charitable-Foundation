@@ -56,7 +56,7 @@ export const AdminOverviewTab: React.FC<AdminOverviewTabProps> = ({
       type: 'document',
       studentName: student?.full_name || 'Student',
       studentId: doc.user_id,
-      description: `Uploaded ${doc.document_type} for ${doc.semester} (${doc.file_name})`,
+      description: `Uploaded ${doc.document_type} for ${doc.semester}`,
       timestamp: doc.uploaded_at,
     });
   });

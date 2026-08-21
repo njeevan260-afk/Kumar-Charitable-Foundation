@@ -351,9 +351,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiv
     { id: 'academic-records', label: 'Academic Records', icon: BookOpen, badge: academicRecords.length },
     { id: 'documents', label: 'Documents', icon: FileText, badge: documents.length },
     { id: 'applications', label: 'Student Applications', icon: ClipboardList },
+    { id: 'projects', label: 'Projects', icon: Briefcase },
+    { id: 'student-works', label: 'Student Works', icon: Award },
     { id: 'logs', label: 'Logs & Reflections', icon: ScrollText },
     { id: 'english-progress', label: 'English Companion', icon: Sparkles, badge: englishSummaries.length },
-    { id: 'projects', label: 'Projects', icon: Briefcase },
     { id: 'notifications', label: 'Notifications', icon: Bell, badge: notifications.length },
   ];
 
@@ -547,6 +548,10 @@ export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiv
 
               {activeSection === 'projects' && (
                 <AdminProjectsTab students={students} />
+              )}
+
+              {activeSection === 'student-works' && (
+                <StudentWorksTab />
               )}
 
               {activeSection === 'logs' && (
