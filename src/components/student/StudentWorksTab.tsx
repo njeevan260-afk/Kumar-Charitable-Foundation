@@ -115,15 +115,17 @@ export const StudentWorksTab: React.FC = () => {
                       </span>
                     </div>
                   </div>
-                  <a
-                    href={project.project_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F8F5F1] text-[#1E3A8A] rounded-lg text-sm font-medium hover:bg-[#E8DED0] transition-colors"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    Visit Project
-                  </a>
+                  {project.project_link && (
+                    <a
+                      href={project.project_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F8F5F1] text-[#1E3A8A] rounded-lg text-sm font-medium hover:bg-[#E8DED0] transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      Visit Project
+                    </a>
+                  )}
                 </div>
                 
                 <p className="text-[#4F4F4F] whitespace-pre-wrap text-sm leading-relaxed">

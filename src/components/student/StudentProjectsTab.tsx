@@ -427,6 +427,7 @@ export const StudentProjectsTab: React.FC = () => {
                         </span>
                       </div>
                     </div>
+                  {project.project_link && (
                     <a
                       href={project.project_link}
                       target="_blank"
@@ -436,6 +437,7 @@ export const StudentProjectsTab: React.FC = () => {
                       <ExternalLink className="w-4 h-4" />
                       Visit Link
                     </a>
+                  )}
                   </div>
                   
                   <p className="text-[#4F4F4F] whitespace-pre-wrap text-sm leading-relaxed mb-6">
