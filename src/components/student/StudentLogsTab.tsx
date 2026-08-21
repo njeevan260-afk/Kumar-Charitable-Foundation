@@ -34,18 +34,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const ALLOWED_DOC_TYPES = [
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-  'application/msword', // .doc
-  'text/plain',
-  'text/markdown',
-  'application/rtf',
-  'image/jpeg',
-  'image/png',
-  'image/webp'
-];
-
 const MAX_DOC_SIZE = 5 * 1024 * 1024; // 5 MB
 
 export const StudentLogsTab: React.FC = () => {

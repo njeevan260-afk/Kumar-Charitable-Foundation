@@ -4,10 +4,10 @@ import {
   StudentProfile,
   StudentMeetingNote,
   StudentSkillUpdate,
-  StudentProjectDocument,
+  
   StudentLearningProcessNote
 } from '../../types/student';
-import { resolveDocumentPreview } from '../../utils/documentViewer';
+
 import {
   BookOpen,
   Sparkles,
@@ -48,21 +48,17 @@ interface EnrichedSkillUpdate extends StudentSkillUpdate {
   student?: StudentProfile;
 }
 
-interface EnrichedProjectDocument extends StudentProjectDocument {
-  student?: StudentProfile;
-}
 
 interface EnrichedLearningProcessNote extends StudentLearningProcessNote {
   student?: StudentProfile;
 }
 
-type ViewMode = 'all' | 'notes' | 'skills' | 'project-docs' | 'learning-process';
+type ViewMode = 'all' | 'notes' | 'skills' | 'learning-process';
 
 export const AdminLogsTab: React.FC<AdminLogsTabProps> = ({ students, onSelectStudent }) => {
   const [meetingNotes, setMeetingNotes] = useState<EnrichedMeetingNote[]>([]);
   const [skillUpdates, setSkillUpdates] = useState<EnrichedSkillUpdate[]>([]);
-  const [projectDocs, setProjectDocs] = useState<EnrichedProjectDocument[]>([]);
-  const [learningNotes, setLearningNotes] = useState<EnrichedLearningProcessNote[]>([]);
+    const [learningNotes, setLearningNotes] = useState<EnrichedLearningProcessNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,29 +69,18 @@ export const AdminLogsTab: React.FC<AdminLogsTabProps> = ({ students, onSelectSt
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
-
-  // Document preview modal state
-  const [previewDoc, setPreviewDoc] = useState<EnrichedProjectDocument | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>('');
-  const [isPdf, setIsPdf] = useState(false);
-  const [isImage, setIsImage] = useState(false);
-  const [loadingPreview, setLoadingPreview] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
-
   const fetchLogs = async () => {
     try {
       setError(null);
-      const [notesRes, skillsRes, docsRes, learnRes] = await Promise.all([
+      const [notesRes, skillsRes, learnRes] = await Promise.all([
         supabase.from('student_meeting_notes').select('*').order('created_at', { ascending: false }),
         supabase.from('student_skills_updates').select('*').order('created_at', { ascending: false }),
-        supabase.from('student_project_documents').select('*').order('created_at', { ascending: false }),
         supabase.from('student_learning_process_notes').select('*').order('created_at', { ascending: false }),
       ]);
 
       const rawNotes: StudentMeetingNote[] = notesRes.data || [];
       const rawSkills: StudentSkillUpdate[] = skillsRes.data || [];
-      const rawDocs: StudentProjectDocument[] = docsRes.data || [];
-      const rawLearn: StudentLearningProcessNote[] = learnRes.data || [];
+            const rawLearn: StudentLearningProcessNote[] = learnRes.data || [];
 
       // Map with student profiles
       const enrichedNotes: EnrichedMeetingNote[] = rawNotes.map((note) => ({
@@ -108,20 +93,14 @@ export const AdminLogsTab: React.FC<AdminLogsTabProps> = ({ students, onSelectSt
         student: students.find((s) => s.id === skill.user_id),
       }));
 
-      const enrichedDocs: EnrichedProjectDocument[] = rawDocs.map((doc) => ({
-        ...doc,
-        student: students.find((s) => s.id === doc.user_id),
-      }));
-
+      
       const enrichedLearn: EnrichedLearningProcessNote[] = rawLearn.map((item) => ({
         ...item,
         student: students.find((s) => s.id === item.user_id),
       }));
 
       setMeetingNotes(enrichedNotes);
-      setSkillUpdates(enrichedSkills);
-      setProjectDocs(enrichedDocs);
-      setLearningNotes(enrichedLearn);
+      setSkillUpdates(enrichedSkills);      setLearningNotes(enrichedLearn);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch logs data.');
     } finally {
@@ -133,51 +112,6 @@ export const AdminLogsTab: React.FC<AdminLogsTabProps> = ({ students, onSelectSt
   useEffect(() => {
     fetchLogs();
   }, [students]);
-
-  // Preview resolution effect
-  useEffect(() => {
-    if (!previewDoc) {
-      setPreviewUrl('');
-      setPreviewError(null);
-      return;
-    }
-
-    let isMounted = true;
-    const fetchPreview = async () => {
-      setLoadingPreview(true);
-      setPreviewError(null);
-
-      try {
-        const res = await resolveDocumentPreview(
-          previewDoc.file_path,
-          previewDoc.file_name,
-          previewDoc.file_type
-        );
-
-        if (!isMounted) return;
-
-        if (res.url) {
-          setPreviewUrl(res.url);
-          setIsPdf(res.isPdf);
-          setIsImage(res.isImage);
-        } else {
-          setPreviewError(res.error || 'Preview could not be loaded.');
-        }
-      } catch (err: any) {
-        if (!isMounted) return;
-        setPreviewError(err.message || 'Failed to render document preview.');
-      } finally {
-        if (isMounted) setLoadingPreview(false);
-      }
-    };
-
-    fetchPreview();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [previewDoc]);
-
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchLogs();
@@ -228,22 +162,6 @@ export const AdminLogsTab: React.FC<AdminLogsTabProps> = ({ students, onSelectSt
     });
   }, [skillUpdates, selectedStudentId, searchQuery]);
 
-  const filteredProjectDocs = useMemo(() => {
-    return projectDocs.filter((doc) => {
-      if (selectedStudentId !== 'all' && doc.user_id !== selectedStudentId) return false;
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase();
-      const studentName = doc.student?.full_name?.toLowerCase() || '';
-      const studentEmail = doc.student?.email?.toLowerCase() || '';
-      return (
-        doc.title.toLowerCase().includes(q) ||
-        doc.description.toLowerCase().includes(q) ||
-        doc.file_name.toLowerCase().includes(q) ||
-        studentName.includes(q) ||
-        studentEmail.includes(q)
-      );
-    });
-  }, [projectDocs, selectedStudentId, searchQuery]);
 
   const filteredLearningNotes = useMemo(() => {
     return learningNotes.filter((item) => {
@@ -268,16 +186,15 @@ export const AdminLogsTab: React.FC<AdminLogsTabProps> = ({ students, onSelectSt
     const ids = new Set<string>();
     meetingNotes.forEach((n) => ids.add(n.user_id));
     skillUpdates.forEach((s) => ids.add(s.user_id));
-    projectDocs.forEach((d) => ids.add(d.user_id));
+    
     learningNotes.forEach((l) => ids.add(l.user_id));
     return ids;
-  }, [meetingNotes, skillUpdates, projectDocs, learningNotes]);
+  }, [meetingNotes, skillUpdates, learningNotes]);
 
   // Combined timeline items
   type TimelineItem =
     | { type: 'note'; data: EnrichedMeetingNote; timestamp: number }
     | { type: 'skill'; data: EnrichedSkillUpdate; timestamp: number }
-    | { type: 'project-doc'; data: EnrichedProjectDocument; timestamp: number }
     | { type: 'learning-process'; data: EnrichedLearningProcessNote; timestamp: number };
 
   const timelineItems: TimelineItem[] = useMemo(() => {
@@ -303,16 +220,6 @@ export const AdminLogsTab: React.FC<AdminLogsTabProps> = ({ students, onSelectSt
       });
     }
 
-    if (viewMode === 'all' || viewMode === 'project-docs') {
-      filteredProjectDocs.forEach((doc) => {
-        list.push({
-          type: 'project-doc',
-          data: doc,
-          timestamp: new Date(doc.created_at).getTime(),
-        });
-      });
-    }
-
     if (viewMode === 'all' || viewMode === 'learning-process') {
       filteredLearningNotes.forEach((item) => {
         list.push({
@@ -325,7 +232,7 @@ export const AdminLogsTab: React.FC<AdminLogsTabProps> = ({ students, onSelectSt
 
     list.sort((a, b) => (sortOrder === 'desc' ? b.timestamp - a.timestamp : a.timestamp - b.timestamp));
     return list;
-  }, [filteredNotes, filteredSkills, filteredProjectDocs, filteredLearningNotes, viewMode, sortOrder]);
+  }, [filteredNotes, filteredSkills, filteredLearningNotes, viewMode, sortOrder]);
 
   const formatDateTime = (dateStr: string) => {
     try {
@@ -367,7 +274,7 @@ export const AdminLogsTab: React.FC<AdminLogsTabProps> = ({ students, onSelectSt
     return { label: 'Project Doc', color: 'bg-blue-100 text-[#1E3A8A] border-blue-200' };
   };
 
-  const totalLogsCount = meetingNotes.length + skillUpdates.length + projectDocs.length + learningNotes.length;
+  const totalLogsCount = meetingNotes.length + skillUpdates.length + learningNotes.length;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
@@ -443,7 +350,7 @@ export const AdminLogsTab: React.FC<AdminLogsTabProps> = ({ students, onSelectSt
               <FileCode className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-[#1F2937] mt-3">{projectDocs.length}</p>
+          <p className="text-2xl font-bold text-[#1F2937] mt-3">{0}</p>
           <p className="text-[11px] text-[#737373] mt-0.5">Docx, PDFs & prompts</p>
         </div>
 
@@ -478,9 +385,8 @@ export const AdminLogsTab: React.FC<AdminLogsTabProps> = ({ students, onSelectSt
                 {students.map((st) => {
                   const studentNotesCount = meetingNotes.filter((n) => n.user_id === st.id).length;
                   const studentSkillsCount = skillUpdates.filter((s) => s.user_id === st.id).length;
-                  const studentDocsCount = projectDocs.filter((d) => d.user_id === st.id).length;
                   const studentLearnCount = learningNotes.filter((l) => l.user_id === st.id).length;
-                  const total = studentNotesCount + studentSkillsCount + studentDocsCount + studentLearnCount;
+                  const total = studentNotesCount + studentSkillsCount + studentLearnCount;
                   return (
                     <option key={st.id} value={st.id}>
                       {st.full_name || 'Unnamed Student'} {st.college_name ? `• ${st.college_name}` : ''} ({total} submissions)
@@ -550,7 +456,7 @@ export const AdminLogsTab: React.FC<AdminLogsTabProps> = ({ students, onSelectSt
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              All Entries ({filteredNotes.length + filteredSkills.length + filteredProjectDocs.length + filteredLearningNotes.length})
+              All Entries ({filteredNotes.length + filteredSkills.length + filteredLearningNotes.length})
             </button>
             <button
               onClick={() => setViewMode('notes')}
@@ -574,17 +480,7 @@ export const AdminLogsTab: React.FC<AdminLogsTabProps> = ({ students, onSelectSt
               <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
               Skills & Tech ({filteredSkills.length})
             </button>
-            <button
-              onClick={() => setViewMode('project-docs')}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                viewMode === 'project-docs'
-                  ? 'bg-[#1E3A8A] text-white shadow-sm'
-                  : 'bg-[#F8F5F0] text-[#6B5A4D] hover:bg-[#EFE9DF]'
-              }`}
-            >
-              <FileCode className="w-3.5 h-3.5 text-blue-600" />
-              Project & Prompt Docs ({filteredProjectDocs.length})
-            </button>
+            
             <button
               onClick={() => setViewMode('learning-process')}
               className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -643,7 +539,7 @@ export const AdminLogsTab: React.FC<AdminLogsTabProps> = ({ students, onSelectSt
           <div className="flex items-center gap-3">
             <div className="text-right">
               <div className="text-xs font-bold text-[#1F2937]">
-                {filteredNotes.length} Meetings • {filteredSkills.length} Skills • {filteredProjectDocs.length} Docs • {filteredLearningNotes.length} Reflections
+                {filteredNotes.length} Meetings • {filteredSkills.length} Skills • {filteredLearningNotes.length} Reflections
               </div>
               <p className="text-[11px] text-[#737373]">Active Submissions</p>
             </div>
@@ -918,138 +814,7 @@ export const AdminLogsTab: React.FC<AdminLogsTabProps> = ({ students, onSelectSt
                 </motion.div>
               );
             }
-
-            // 3. PROJECT DOCUMENT & PROMPT ARTIFACT CARD
-            if (item.type === 'project-doc') {
-              const doc = item.data;
-              const { date, time } = formatDateTime(doc.created_at);
-              const isExpanded = expandedItems[doc.id] ?? true;
-              const badge = getDocBadge(doc.file_name);
-
-              return (
-                <motion.div
-                  key={`doc-${doc.id}`}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-2xl border border-[#E8DED0] shadow-sm overflow-hidden hover:border-[#D0C2AE] transition-all"
-                >
-                  <div className="p-5 sm:p-6 bg-gradient-to-b from-[#F0F5FF] to-white border-b border-[#E8DED0]/60">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-start sm:items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200/60 text-[#1E3A8A] flex items-center justify-center flex-shrink-0">
-                          <FileCode className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${badge.color}`}>
-                              {badge.label}
-                            </span>
-                            <h3 className="text-base sm:text-lg font-bold text-[#1F2937]">
-                              {doc.title}
-                            </h3>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1 text-xs text-[#737373]">
-                            <span className="font-semibold text-[#1F2937]">
-                              {doc.student?.full_name || 'Student'}
-                            </span>
-                            {doc.student?.college_name && (
-                              <>
-                                <span>•</span>
-                                <span className="text-[#888]">{doc.student.college_name}</span>
-                              </>
-                            )}
-                            <span>•</span>
-                            <span className="text-[#1E3A8A] font-semibold">{doc.file_name}</span>
-                            {doc.file_size ? (
-                              <span className="text-[#737373]">({formatFileSize(doc.file_size)})</span>
-                            ) : null}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 justify-between sm:justify-end">
-                        <div className="text-right">
-                          <div className="flex items-center gap-1.5 text-xs font-semibold text-[#1F2937]">
-                            <Calendar className="w-3.5 h-3.5 text-[#1E3A8A]" />
-                            {date}
-                          </div>
-                          {time && (
-                            <div className="flex items-center gap-1 text-[11px] text-[#737373] mt-0.5 justify-end">
-                              <Clock className="w-3 h-3 text-[#A09080]" />
-                              {time}
-                            </div>
-                          )}
-                        </div>
-
-                        <button
-                          onClick={() => toggleExpand(doc.id)}
-                          className="p-1.5 rounded-lg hover:bg-[#F8F5F0] text-[#737373] transition-colors cursor-pointer"
-                          title={isExpanded ? 'Collapse' : 'Expand'}
-                        >
-                          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <AnimatePresence initial={false}>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="p-5 sm:p-6 space-y-4"
-                      >
-                        <div>
-                          <h4 className="text-xs font-bold text-[#6B5A4D] uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                            <FileText className="w-3.5 h-3.5 text-[#1E3A8A]" />
-                            Document Breakdown / Prompts Summary
-                          </h4>
-                          <div className="bg-[#F8F5F0]/60 rounded-xl p-4 border border-[#E8DED0]/70 text-sm text-[#374151] whitespace-pre-wrap leading-relaxed">
-                            {doc.description}
-                          </div>
-                        </div>
-
-                        {/* Document Action Buttons */}
-                        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#F3EFE9]">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => setPreviewDoc(doc)}
-                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#1E3A8A] text-white rounded-xl text-xs font-bold shadow-xs hover:bg-[#152C69] transition-colors cursor-pointer"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              Preview Document
-                            </button>
-                            <a
-                              href={doc.file_path}
-                              download={doc.file_name}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#FFFDF8] hover:bg-[#F3EFE9] border border-[#E8DED0] text-[#1E3A8A] rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                            >
-                              <Download className="w-3.5 h-3.5" />
-                              Download File ({formatFileSize(doc.file_size)})
-                            </a>
-                          </div>
-
-                          {doc.student && onSelectStudent && (
-                            <button
-                              onClick={() => onSelectStudent(doc.student!)}
-                              className="text-xs font-semibold text-[#1E3A8A] hover:underline flex items-center gap-1 cursor-pointer"
-                            >
-                              Inspect {doc.student.full_name}'s full profile <ExternalLink className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              );
-            }
-
-            // 4. OVERALL LEARNING PROCESS NOTE CARD
+            // 4. LEARNING PROCESS
             if (item.type === 'learning-process') {
               const learn = item.data;
               const { date, time } = formatDateTime(learn.created_at);
@@ -1182,122 +947,6 @@ export const AdminLogsTab: React.FC<AdminLogsTabProps> = ({ students, onSelectSt
         </div>
       )}
 
-      {/* ADMIN DOCUMENT PREVIEW MODAL */}
-      {previewDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col p-6 shadow-2xl border border-[#E8DED0] animate-fadeIn">
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#F3EFE9]">
-              <div>
-                <h3 className="text-base font-bold text-[#1F2937] truncate">{previewDoc.title}</h3>
-                <p className="text-xs text-[#737373]">
-                  {previewDoc.file_name} • Student: {previewDoc.student?.full_name || 'Enrolled Student'}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {previewUrl && (
-                  <>
-                    <a
-                      href={previewUrl}
-                      download={previewDoc.file_name}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="px-3 py-1.5 bg-[#FFFDF8] hover:bg-[#F3EFE9] border border-[#E8DED0] text-[#1E3A8A] rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-                      title="Download file"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      Download
-                    </a>
-                    <a
-                      href={previewUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="px-3 py-1.5 bg-[#1E3A8A] text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                      title="Open in new tab"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      Open Tab
-                    </a>
-                  </>
-                )}
-                <button
-                  onClick={() => {
-                    setPreviewDoc(null);
-                    setPreviewUrl('');
-                    setPreviewError(null);
-                  }}
-                  className="p-1.5 text-[#737373] hover:text-[#1F2937] hover:bg-[#F3EFE9] rounded-lg transition-colors cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-auto bg-[#F9F6F0] rounded-xl flex flex-col items-center justify-center p-2 min-h-[380px]">
-              {loadingPreview ? (
-                <div className="flex flex-col items-center justify-center gap-2 text-[#737373] py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-[#1E3A8A]" />
-                  <p className="text-xs">Loading document preview...</p>
-                </div>
-              ) : previewError ? (
-                <div className="text-center p-6 bg-white rounded-xl border border-red-200">
-                  <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-2" />
-                  <p className="text-xs font-bold text-[#1F2937]">Preview Notice</p>
-                  <p className="text-[11px] text-[#737373] mt-1 mb-3">{previewError}</p>
-                  {previewUrl && (
-                    <a
-                      href={previewUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1E3A8A] text-white text-xs font-bold rounded-lg"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      Open Directly
-                    </a>
-                  )}
-                </div>
-              ) : !previewUrl ? (
-                <div className="text-center p-6">
-                  <FileText className="w-12 h-12 text-[#A09080] mx-auto mb-2" />
-                  <p className="text-sm font-semibold text-[#1F2937]">Preview Not Available</p>
-                  <p className="text-xs text-[#737373] mt-1">
-                    Please use the download button to view this file.
-                  </p>
-                </div>
-              ) : isPdf ? (
-                <iframe
-                  src={previewUrl}
-                  title={previewDoc.file_name}
-                  className="w-full h-[520px] rounded-lg border border-[#E8DED0] bg-white shadow-xs"
-                />
-              ) : isImage ? (
-                <img
-                  src={previewUrl}
-                  alt={previewDoc.file_name}
-                  className="max-h-[500px] max-w-full object-contain rounded-lg shadow-xs border border-[#E8DED0]"
-                />
-              ) : (
-                <div className="text-center p-6 bg-white rounded-xl border border-[#E8DED0] max-w-md">
-                  <FileCode className="w-12 h-12 text-[#1E3A8A] mx-auto mb-3" />
-                  <h4 className="text-sm font-bold text-[#1F2937] mb-1">{previewDoc.file_name}</h4>
-                  <p className="text-xs text-[#737373] mb-4">
-                    Word (.docx / .doc) and prompt documents can be downloaded directly to inspect prompts and formatting.
-                  </p>
-                  <a
-                    href={previewUrl}
-                    download={previewDoc.file_name}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#1E3A8A] text-white rounded-xl text-xs font-bold shadow-xs hover:bg-[#152C69] transition-colors"
-                  >
-                    <Download className="w-4 h-4" />
-                    Download File Now
-                  </a>
-                </div>
-              )}
-            </div>
           </div>
-        </div>
-      )}
-    </div>
   );
 };

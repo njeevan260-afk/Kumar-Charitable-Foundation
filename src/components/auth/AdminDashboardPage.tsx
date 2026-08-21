@@ -19,6 +19,7 @@ import { AdminStudentDetailModal } from '../admin/AdminStudentDetailModal';
 import { AdminStudentApplicationsTab } from '../admin/AdminStudentApplicationsTab';
 import { AdminProjectsTab } from '../admin/AdminProjectsTab';
 import { AdminLogsTab } from '../admin/AdminLogsTab';
+import { StudentWorksTab } from '../student/StudentWorksTab';
 import { LOGO_URL } from '../../data/foundationData';
 import {
   LayoutDashboard,
@@ -35,6 +36,7 @@ import {
   RefreshCw,
   ClipboardList,
   Briefcase,
+  Award,
   ScrollText,
   MessageSquare
 } from 'lucide-react';
@@ -51,6 +53,7 @@ type AdminSection =
   | 'documents'
   | 'english-progress'
   | 'projects'
+  | 'student-works'
   | 'logs'
   | 'notifications';
 
