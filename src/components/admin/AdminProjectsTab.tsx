@@ -224,10 +224,12 @@ export const AdminProjectsTab: React.FC<AdminProjectsTabProps> = ({ students }) 
                       Project Documents
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {project.student_project_documents.map(doc => (
+                      {project.student_project_documents.map(doc => {
+                        const { data: urlData } = supabase.storage.from('student-documents').getPublicUrl(doc.file_path);
+                        return (
                         <a
                           key={doc.id}
-                          href={doc.file_url}
+                          href={urlData.publicUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-3 p-3 rounded-xl border border-[#E8DED0] hover:border-[#1E3A8A] hover:bg-blue-50 transition-colors group"
@@ -240,11 +242,12 @@ export const AdminProjectsTab: React.FC<AdminProjectsTabProps> = ({ students }) 
                               {doc.file_name}
                             </p>
                             <p className="text-xs text-[#737373] mt-0.5 capitalize">
-                              {doc.document_type || 'Document'}
+                              {doc.file_type || 'Document'}
                             </p>
                           </div>
                         </a>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}

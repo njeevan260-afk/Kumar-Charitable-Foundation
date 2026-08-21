@@ -60,7 +60,20 @@ type AdminSection =
 export const AdminDashboardPage: React.FC<AdminDashboardPageProps> = ({ setActiveTab }) => {
   const { user, profile, role, loading: authLoading, signOut } = useAuth();
   const [sessionChecking, setSessionChecking] = useState(true);
-  const [activeSection, setActiveSection] = useState<AdminSection>('overview');
+  const [activeSection, setActiveSection] = useState<AdminSection>(() => {
+    try {
+      return (sessionStorage.getItem('kcf_admin_section') as AdminSection) || 'overview';
+    } catch {
+      return 'overview';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('kcf_admin_section', activeSection);
+    } catch {}
+  }, [activeSection]);
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Real Database Data

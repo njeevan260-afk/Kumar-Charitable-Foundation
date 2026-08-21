@@ -21,7 +21,20 @@ import { StudentDashboardPage } from './components/auth/StudentDashboardPage';
 import { supabase } from './supabaseClient';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<string>('home');
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    try {
+      return sessionStorage.getItem('kcf_active_tab') || 'home';
+    } catch {
+      return 'home';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('kcf_active_tab', activeTab);
+    } catch {}
+  }, [activeTab]);
+
   const [authEmail, setAuthEmail] = useState<string>('');
   const [authSuccessMessage, setAuthSuccessMessage] = useState<string | null>(null);
 

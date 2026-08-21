@@ -51,7 +51,20 @@ type DashboardSection =
 export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ setActiveTab }) => {
   const { user, profile: authProfile, role, loading: authLoading, signOut } = useAuth();
 
-  const [activeSection, setActiveSection] = useState<DashboardSection>('overview');
+  const [activeSection, setActiveSection] = useState<DashboardSection>(() => {
+    try {
+      return (sessionStorage.getItem('kcf_student_section') as DashboardSection) || 'overview';
+    } catch {
+      return 'overview';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('kcf_student_section', activeSection);
+    } catch {}
+  }, [activeSection]);
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Real Database States
