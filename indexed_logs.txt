@@ -1,0 +1,1414 @@
+     1	import React, { useState, useEffect, useRef } from 'react';
+     2	import { supabase } from '../../supabaseClient';
+     3	import {
+     4	  StudentMeetingNote,
+     5	  StudentSkillUpdate,
+     6	  StudentProjectDocument,
+     7	  StudentLearningProcessNote
+     8	} from '../../types/student';
+     9	import { generateUUID } from '../../utils/uuid';
+    10	import { resolveDocumentPreview, extractStoragePath } from '../../utils/documentViewer';
+    11	import {
+    12	  Loader2,
+    13	  Plus,
+    14	  Calendar,
+    15	  BookOpen,
+    16	  Sparkles,
+    17	  MessageSquare,
+    18	  Save,
+    19	  Trash2,
+    20	  X,
+    21	  FileText,
+    22	  UploadCloud,
+    23	  Download,
+    24	  Eye,
+    25	  FileCode,
+    26	  CheckCircle2,
+    27	  AlertCircle,
+    28	  Clock,
+    29	  Compass,
+    30	  FileCheck,
+    31	  Tag,
+    32	  ExternalLink,
+    33	  Milestone
+    34	} from 'lucide-react';
+    35	import { motion, AnimatePresence } from 'framer-motion';
+    36	
+    37	const ALLOWED_DOC_TYPES = [
+    38	  'application/pdf',
+    39	  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+    40	  'application/msword', // .doc
+    41	  'text/plain',
+    42	  'text/markdown',
+    43	  'application/rtf',
+    44	  'image/jpeg',
+    45	  'image/png',
+    46	  'image/webp'
+    47	];
+    48	
+    49	const MAX_DOC_SIZE = 5 * 1024 * 1024; // 5 MB
+    50	
+    51	export const StudentLogsTab: React.FC = () => {
+    52	  const [activeSectionView, setActiveSectionView] = useState<'all' | 'notes' | 'skills' | 'project-docs' | 'learning-process'>('all');
+    53	
+    54	  const [meetingNotes, setMeetingNotes] = useState<StudentMeetingNote[]>([]);
+    55	  const [skillUpdates, setSkillUpdates] = useState<StudentSkillUpdate[]>([]);
+    56	  const [projectDocs, setProjectDocs] = useState<StudentProjectDocument[]>([]);
+    57	  const [learningNotes, setLearningNotes] = useState<StudentLearningProcessNote[]>([]);
+    58	  const [loading, setLoading] = useState(true);
+    59	
+    60	  // Modal visibility states
+    61	  const [showNoteModal, setShowNoteModal] = useState(false);
+    62	  const [showSkillModal, setShowSkillModal] = useState(false);
+    63	  const [showDocModal, setShowDocModal] = useState(false);
+    64	  const [showLearningModal, setShowLearningModal] = useState(false);
+    65	
+    66	  // Preview modal states
+    67	  const [previewDoc, setPreviewDoc] = useState<StudentProjectDocument | null>(null);
+    68	  const [previewUrl, setPreviewUrl] = useState<string>('');
+    69	  const [isPdf, setIsPdf] = useState(false);
+    70	  const [isImage, setIsImage] = useState(false);
+    71	  const [loadingPreview, setLoadingPreview] = useState(false);
+    72	  const [previewError, setPreviewError] = useState<string | null>(null);
+    73	
+    74	  // Submission / form states
+    75	  const [submitting, setSubmitting] = useState(false);
+    76	  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    77	  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    78	
+    79	  // Form states
+    80	  const [noteForm, setNoteForm] = useState({ meeting_topic: '', notes: '', learnt: '', feedback: '' });
+    81	  const [skillForm, setSkillForm] = useState({ skill_name: '', description: '' });
+    82	  const [docForm, setDocForm] = useState({ title: '', description: '' });
+    83	  const [selectedDocFile, setSelectedDocFile] = useState<File | null>(null);
+    84	  const [learningForm, setLearningForm] = useState({ title: '', notes: '', challenges: '', key_milestones: '' });
+    85	
+    86	  const fileInputRef = useRef<HTMLInputElement>(null);
+    87	
+    88	  useEffect(() => {
+    89	    fetchData();
+    90	  }, []);
+    91	
+    92	  const fetchData = async () => {
+    93	    setLoading(true);
+    94	    const { data: { session } } = await supabase.auth.getSession();
+    95	    if (!session) {
+    96	      setLoading(false);
+    97	      return;
+    98	    }
+    99	
+   100	    try {
+   101	      const [notesRes, skillsRes, docsRes, learnRes] = await Promise.all([
+   102	        supabase.from('student_meeting_notes').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }),
+   103	        supabase.from('student_skills_updates').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }),
+   104	        supabase.from('student_project_documents').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }),
+   105	        supabase.from('student_learning_process_notes').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }),
+   106	      ]);
+   107	
+   108	      if (notesRes.data) setMeetingNotes(notesRes.data as StudentMeetingNote[]);
+   109	      if (skillsRes.data) setSkillUpdates(skillsRes.data as StudentSkillUpdate[]);
+   110	      if (docsRes.data) setProjectDocs(docsRes.data as StudentProjectDocument[]);
+   111	      if (learnRes.data) setLearningNotes(learnRes.data as StudentLearningProcessNote[]);
+   112	    } catch (e) {
+   113	      console.warn('Failed to fetch logs:', e);
+   114	    } finally {
+   115	      setLoading(false);
+   116	    }
+   117	  };
+   118	
+   119	  // Preview resolution effect
+   120	  useEffect(() => {
+   121	    if (!previewDoc) {
+   122	      setPreviewUrl('');
+   123	      setPreviewError(null);
+   124	      return;
+   125	    }
+   126	
+   127	    let isMounted = true;
+   128	    const fetchPreview = async () => {
+   129	      setLoadingPreview(true);
+   130	      setPreviewError(null);
+   131	
+   132	      try {
+   133	        const res = await resolveDocumentPreview(
+   134	          previewDoc.file_path,
+   135	          previewDoc.file_name,
+   136	          previewDoc.file_type
+   137	        );
+   138	
+   139	        if (!isMounted) return;
+   140	
+   141	        if (res.url) {
+   142	          setPreviewUrl(res.url);
+   143	          setIsPdf(res.isPdf);
+   144	          setIsImage(res.isImage);
+   145	        } else {
+   146	          setPreviewError(res.error || 'Preview could not be loaded.');
+   147	        }
+   148	      } catch (err: any) {
+   149	        if (!isMounted) return;
+   150	        setPreviewError(err.message || 'Failed to render document preview.');
+   151	      } finally {
+   152	        if (isMounted) setLoadingPreview(false);
+   153	      }
+   154	    };
+   155	
+   156	    fetchPreview();
+   157	
+   158	    return () => {
+   159	      isMounted = false;
+   160	    };
+   161	  }, [previewDoc]);
+   162	
+   163	  const handleSaveNote = async () => {
+   164	    setErrorMsg(null);
+   165	    if (!noteForm.meeting_topic.trim() || !noteForm.notes.trim() || !noteForm.learnt.trim()) {
+   166	      setErrorMsg('Please fill out all required fields.');
+   167	      return;
+   168	    }
+   169	
+   170	    setSubmitting(true);
+   171	    const { data: { session } } = await supabase.auth.getSession();
+   172	    if (!session) return;
+   173	
+   174	    try {
+   175	      const { data, error } = await supabase
+   176	        .from('student_meeting_notes')
+   177	        .insert([{ user_id: session.user.id, ...noteForm }])
+   178	        .select()
+   179	        .single();
+   180	
+   181	      if (error) {
+   182	        if (error.code === '42P01') throw new Error("Table 'student_meeting_notes' does not exist yet. Please run the SQL schema script in your Supabase dashboard.");
+   183	        throw error;
+   184	      }
+   185	
+   186	      setMeetingNotes([data, ...meetingNotes]);
+   187	      setShowNoteModal(false);
+   188	      setNoteForm({ meeting_topic: '', notes: '', learnt: '', feedback: '' });
+   189	      setSuccessMsg('Meeting note logged successfully!');
+   190	      setTimeout(() => setSuccessMsg(null), 3000);
+   191	    } catch (err: any) {
+   192	      setErrorMsg(err.message || 'Failed to save meeting note');
+   193	    } finally {
+   194	      setSubmitting(false);
+   195	    }
+   196	  };
+   197	
+   198	  const handleSaveSkill = async () => {
+   199	    setErrorMsg(null);
+   200	    if (!skillForm.skill_name.trim() || !skillForm.description.trim()) {
+   201	      setErrorMsg('Please fill out all required fields.');
+   202	      return;
+   203	    }
+   204	
+   205	    setSubmitting(true);
+   206	    const { data: { session } } = await supabase.auth.getSession();
+   207	    if (!session) return;
+   208	
+   209	    try {
+   210	      const { data, error } = await supabase
+   211	        .from('student_skills_updates')
+   212	        .insert([{ user_id: session.user.id, ...skillForm }])
+   213	        .select()
+   214	        .single();
+   215	
+   216	      if (error) {
+   217	        if (error.code === '42P01') throw new Error("Table 'student_skills_updates' does not exist yet. Please run the SQL schema script in your Supabase dashboard.");
+   218	        throw error;
+   219	      }
+   220	
+   221	      setSkillUpdates([data, ...skillUpdates]);
+   222	      setShowSkillModal(false);
+   223	      setSkillForm({ skill_name: '', description: '' });
+   224	      setSuccessMsg('Skill update logged successfully!');
+   225	      setTimeout(() => setSuccessMsg(null), 3000);
+   226	    } catch (err: any) {
+   227	      setErrorMsg(err.message || 'Failed to save skill update');
+   228	    } finally {
+   229	      setSubmitting(false);
+   230	    }
+   231	  };
+   232	
+   233	  const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
+   234	    setErrorMsg(null);
+   235	    if (e.target.files && e.target.files[0]) {
+   236	      const file = e.target.files[0];
+   237	      const lowerName = file.name.toLowerCase();
+   238	
+   239	      const isValidExt = [
+   240	        '.pdf',
+   241	        '.docx',
+   242	        '.doc',
+   243	        '.txt',
+   244	        '.md',
+   245	        '.rtf',
+   246	        '.jpg',
+   247	        '.jpeg',
+   248	        '.png'
+   249	      ].some((ext) => lowerName.endsWith(ext));
+   250	
+   251	      const isPermittedType = ALLOWED_DOC_TYPES.includes(file.type) || file.type === 'application/octet-stream' || !file.type;
+   252	
+   253	      if (!isValidExt && !isPermittedType) {
+   254	        setErrorMsg('Invalid file format. Please upload a Word document, PDF, or text document.');
+   255	        setSelectedDocFile(null);
+   256	        return;
+   257	      }
+   258	
+   259	      if (file.size > MAX_DOC_SIZE) {
+   260	        setErrorMsg(`File size (${(file.size / (1024 * 1024)).toFixed(1)} MB) exceeds the 5 MB limit.`);
+   261	        setSelectedDocFile(null);
+   262	        return;
+   263	      }
+   264	
+   265	      setSelectedDocFile(file);
+   266	    }
+   267	  };
+   268	
+   269	  const handleUploadProjectDoc = async () => {
+   270	    setErrorMsg(null);
+   271	    if (!docForm.title.trim()) {
+   272	      setErrorMsg('Please enter a Document / Project Title.');
+   273	      return;
+   274	    }
+   275	    if (!docForm.description.trim()) {
+   276	      setErrorMsg('Please describe what you are uploading (e.g. Prompt document, architecture notes).');
+   277	      return;
+   278	    }
+   279	    if (!selectedDocFile) {
+   280	      setErrorMsg('Please select a file to upload (.docx, .doc, .pdf, or .txt).');
+   281	      return;
+   282	    }
+   283	
+   284	    setSubmitting(true);
+   285	    const { data: { session } } = await supabase.auth.getSession();
+   286	    if (!session) {
+   287	      setSubmitting(false);
+   288	      return;
+   289	    }
+   290	
+   291	    const studentId = session.user.id;
+   292	    const now = new Date().toISOString();
+   293	    const docId = generateUUID();
+   294	    const cleanFileName = selectedDocFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+   295	    const storagePath = `project_docs/${studentId}/${Date.now()}_${cleanFileName}`;
+   296	
+   297	    try {
+   298	      const { error: uploadError } = await supabase.storage
+   299	        .from('student-documents')
+   300	        .upload(storagePath, selectedDocFile, {
+   301	          cacheControl: '3600',
+   302	          upsert: true,
+   303	        });
+   304	
+   305	      if (uploadError) {
+   306	        throw new Error(`Storage upload failed: ${uploadError.message}`);
+   307	      }
+   308	
+   309	      const newDocPayload: StudentProjectDocument = {
+   310	        id: docId,
+   311	        user_id: studentId,
+   312	        title: docForm.title.trim(),
+   313	        description: docForm.description.trim(),
+   314	        file_path: storagePath,
+   315	        file_name: selectedDocFile.name,
+   316	        file_type: selectedDocFile.type || 'application/octet-stream',
+   317	        file_size: selectedDocFile.size,
+   318	        created_at: now,
+   319	      };
+   320	
+   321	      const { data, error: dbError } = await supabase
+   322	        .from('student_project_documents')
+   323	        .insert([newDocPayload])
+   324	        .select()
+   325	        .single();
+   326	
+   327	      if (dbError) {
+   328	        if (dbError.code === '42P01') {
+   329	          console.warn("Table 'student_project_documents' pending creation in Supabase.");
+   330	        } else {
+   331	          throw dbError;
+   332	        }
+   333	      }
+   334	
+   335	      setProjectDocs([data || newDocPayload, ...projectDocs]);
+   336	      setShowDocModal(false);
+   337	      setDocForm({ title: '', description: '' });
+   338	      setSelectedDocFile(null);
+   339	      if (fileInputRef.current) fileInputRef.current.value = '';
+   340	      setSuccessMsg('Project document uploaded successfully!');
+   341	      setTimeout(() => setSuccessMsg(null), 3000);
+   342	    } catch (err: any) {
+   343	      setErrorMsg(err.message || 'Failed to upload project document');
+   344	    } finally {
+   345	      setSubmitting(false);
+   346	    }
+   347	  };
+   348	
+   349	  const handleDeleteProjectDoc = async (id: string, filePath: string) => {
+   350	    if (!window.confirm('Are you sure you want to delete this project document?')) return;
+   351	    try {
+   352	      if (filePath) {
+   353	        const cleanPath = extractStoragePath(filePath);
+   354	        if (cleanPath && !cleanPath.startsWith('http')) {
+   355	          await supabase.storage.from('student-documents').remove([cleanPath]);
+   356	        }
+   357	      }
+   358	
+   359	      await supabase.from('student_project_documents').delete().eq('id', id);
+   360	      setProjectDocs(projectDocs.filter((d) => d.id !== id));
+   361	      setSuccessMsg('Document deleted.');
+   362	      setTimeout(() => setSuccessMsg(null), 3000);
+   363	    } catch (err: any) {
+   364	      console.warn('Error deleting doc:', err);
+   365	    }
+   366	  };
+   367	
+   368	  const handleSaveLearningNote = async () => {
+   369	    setErrorMsg(null);
+   370	    if (!learningForm.title.trim() || !learningForm.notes.trim()) {
+   371	      setErrorMsg('Please enter a Reflection Title and Learning Process Notes.');
+   372	      return;
+   373	    }
+   374	
+   375	    setSubmitting(true);
+   376	    const { data: { session } } = await supabase.auth.getSession();
+   377	    if (!session) return;
+   378	
+   379	    try {
+   380	      const newLearningPayload = {
+   381	        user_id: session.user.id,
+   382	        title: learningForm.title.trim(),
+   383	        notes: learningForm.notes.trim(),
+   384	        challenges: learningForm.challenges.trim(),
+   385	        key_milestones: learningForm.key_milestones.trim(),
+   386	      };
+   387	
+   388	      const { data, error } = await supabase
+   389	        .from('student_learning_process_notes')
+   390	        .insert([newLearningPayload])
+   391	        .select()
+   392	        .single();
+   393	
+   394	      if (error) {
+   395	        if (error.code === '42P01') {
+   396	          console.warn("Table 'student_learning_process_notes' pending creation in Supabase.");
+   397	        } else {
+   398	          throw error;
+   399	        }
+   400	      }
+   401	
+   402	      const savedItem: StudentLearningProcessNote = data || {
+   403	        id: `learn-${Date.now()}`,
+   404	        ...newLearningPayload,
+   405	        created_at: new Date().toISOString(),
+   406	      };
+   407	
+   408	      setLearningNotes([savedItem, ...learningNotes]);
+   409	      setShowLearningModal(false);
+   410	      setLearningForm({ title: '', notes: '', challenges: '', key_milestones: '' });
+   411	      setSuccessMsg('Learning process reflection saved!');
+   412	      setTimeout(() => setSuccessMsg(null), 3000);
+   413	    } catch (err: any) {
+   414	      setErrorMsg(err.message || 'Failed to save learning process reflection');
+   415	    } finally {
+   416	      setSubmitting(false);
+   417	    }
+   418	  };
+   419	
+   420	  const handleDeleteLearningNote = async (id: string) => {
+   421	    if (!window.confirm('Delete this learning reflection?')) return;
+   422	    try {
+   423	      await supabase.from('student_learning_process_notes').delete().eq('id', id);
+   424	      setLearningNotes(learningNotes.filter((n) => n.id !== id));
+   425	    } catch (err: any) {
+   426	      console.warn('Error deleting note:', err);
+   427	    }
+   428	  };
+   429	
+   430	  const formatFileSize = (bytes?: number) => {
+   431	    if (!bytes) return '';
+   432	    if (bytes < 1024) return `${bytes} B`;
+   433	    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+   434	    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+   435	  };
+   436	
+   437	  const getDocBadge = (fileName: string) => {
+   438	    const lower = fileName.toLowerCase();
+   439	    if (lower.endsWith('.docx') || lower.endsWith('.doc')) {
+   440	      return { label: 'Word Document', color: 'bg-blue-100 text-blue-800 border-blue-200' };
+   441	    }
+   442	    if (lower.endsWith('.pdf')) {
+   443	      return { label: 'PDF Document', color: 'bg-red-100 text-red-800 border-red-200' };
+   444	    }
+   445	    if (lower.endsWith('.txt') || lower.endsWith('.md')) {
+   446	      return { label: 'Prompt / Text Doc', color: 'bg-amber-100 text-amber-900 border-amber-200' };
+   447	    }
+   448	    return { label: 'Document', color: 'bg-blue-100 text-[#1E3A8A] border-blue-200' };
+   449	  };
+   450	
+   451	  return (
+   452	    <div className="space-y-8 animate-in fade-in duration-500">
+   453	      {/* Top Banner */}
+   454	      <div className="bg-gradient-to-r from-[#1E3A8A] via-[#2A4993] to-[#C49A3A] rounded-[24px] p-8 sm:p-10 text-white relative overflow-hidden shadow-lg">
+   455	        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
+   456	        <div className="relative z-10 max-w-3xl">
+   457	          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-xs font-semibold uppercase tracking-wider mb-3">
+   458	            <Sparkles className="w-3.5 h-3.5 text-[#E6C975]" />
+   459	            Continuous Growth & Reflections
+   460	          </div>
+   461	          <h2 className="text-3xl sm:text-4xl font-serif font-bold mb-3 tracking-tight">Logs & Reflections</h2>
+   462	          <p className="text-white/90 text-sm sm:text-base leading-relaxed">
+   463	            Record meeting discussions, log newly mastered AI technologies, upload project & prompt documents (.docx, .pdf, .doc), and reflect on your overall learning methodology.
+   464	          </p>
+   465	        </div>
+   466	      </div>
+   467	
+   468	      {/* Success Notification */}
+   469	      {successMsg && (
+   470	        <motion.div
+   471	          initial={{ opacity: 0, y: -10 }}
+   472	          animate={{ opacity: 1, y: 0 }}
+   473	          className="p-4 bg-emerald-50 rounded-2xl flex items-center gap-3 border border-emerald-200 text-emerald-800 text-sm font-semibold shadow-xs"
+   474	        >
+   475	          <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+   476	          <span>{successMsg}</span>
+   477	        </motion.div>
+   478	      )}
+   479	
+   480	      {/* Section Quick Navigation Pills */}
+   481	      <div className="bg-white rounded-2xl border border-[#E8DED0] p-4 shadow-sm flex flex-wrap items-center justify-between gap-3">
+   482	        <div className="flex flex-wrap items-center gap-2">
+   483	          <button type="button"
+   484	            onClick={() => setActiveSectionView('all')}
+   485	            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+   486	              activeSectionView === 'all'
+   487	                ? 'bg-[#1E3A8A] text-white shadow-sm'
+   488	                : 'bg-[#F8F5F0] text-[#6B5A4D] hover:bg-[#EFE9DF]'
+   489	            }`}
+   490	          >
+   491	            All Sections ({meetingNotes.length + skillUpdates.length + projectDocs.length + learningNotes.length})
+   492	          </button>
+   493	          <button type="button"
+   494	            onClick={() => setActiveSectionView('notes')}
+   495	            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+   496	              activeSectionView === 'notes'
+   497	                ? 'bg-[#1E3A8A] text-white shadow-sm'
+   498	                : 'bg-[#F8F5F0] text-[#6B5A4D] hover:bg-[#EFE9DF]'
+   499	            }`}
+   500	          >
+   501	            <BookOpen className="w-4 h-4 text-[#C49A3A]" />
+   502	            Meeting Notes ({meetingNotes.length})
+   503	          </button>
+   504	          <button type="button"
+   505	            onClick={() => setActiveSectionView('skills')}
+   506	            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+   507	              activeSectionView === 'skills'
+   508	                ? 'bg-[#1E3A8A] text-white shadow-sm'
+   509	                : 'bg-[#F8F5F0] text-[#6B5A4D] hover:bg-[#EFE9DF]'
+   510	            }`}
+   511	          >
+   512	            <Sparkles className="w-4 h-4 text-emerald-600" />
+   513	            Skills & Tech ({skillUpdates.length})
+   514	          </button>
+   515	          <button type="button"
+   516	            onClick={() => setActiveSectionView('project-docs')}
+   517	            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+   518	              activeSectionView === 'project-docs'
+   519	                ? 'bg-[#1E3A8A] text-white shadow-sm'
+   520	                : 'bg-[#F8F5F0] text-[#6B5A4D] hover:bg-[#EFE9DF]'
+   521	            }`}
+   522	          >
+   523	            <FileCode className="w-4 h-4 text-blue-600" />
+   524	            Project & Prompt Docs ({projectDocs.length})
+   525	          </button>
+   526	          <button type="button"
+   527	            onClick={() => setActiveSectionView('learning-process')}
+   528	            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+   529	              activeSectionView === 'learning-process'
+   530	                ? 'bg-[#1E3A8A] text-white shadow-sm'
+   531	                : 'bg-[#F8F5F0] text-[#6B5A4D] hover:bg-[#EFE9DF]'
+   532	            }`}
+   533	          >
+   534	            <Compass className="w-4 h-4 text-[#1E3A8A]" />
+   535	            Learning Process ({learningNotes.length})
+   536	          </button>
+   537	        </div>
+   538	
+   539	        {/* Quick Add Buttons */}
+   540	        <div className="flex flex-wrap items-center gap-2">
+   541	          <button type="button"
+   542	            onClick={() => setShowDocModal(true)}
+   543	            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFDF8] border border-[#1E3A8A] text-[#1E3A8A] hover:bg-blue-50 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+   544	          >
+   545	            <UploadCloud className="w-3.5 h-3.5" />
+   546	            Upload Project Doc
+   547	          </button>
+   548	          <button type="button"
+   549	            onClick={() => setShowLearningModal(true)}
+   550	            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFDF8] border border-[#1E3A8A] text-[#1E3A8A] hover:bg-blue-50 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+   551	          >
+   552	            <Plus className="w-3.5 h-3.5" />
+   553	            Add Learning Note
+   554	          </button>
+   555	        </div>
+   556	      </div>
+   557	
+   558	      {loading ? (
+   559	        <div className="flex flex-col items-center justify-center p-16 bg-white rounded-3xl border border-[#E8DED0]">
+   560	          <Loader2 className="w-8 h-8 animate-spin text-[#1E3A8A] mb-3" />
+   561	          <p className="text-sm font-semibold text-[#6B5A4D]">Loading your logs & reflections...</p>
+   562	        </div>
+   563	      ) : (
+   564	        <div className="space-y-8">
+   565	          {/* SECTION 1 & 2: Grid of Meeting Notes and Skills */}
+   566	          {(activeSectionView === 'all' || activeSectionView === 'notes' || activeSectionView === 'skills') && (
+   567	            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+   568	              {/* Meeting Notes Section */}
+   569	              {(activeSectionView === 'all' || activeSectionView === 'notes') && (
+   570	                <div className="bg-white rounded-3xl border border-[#E8DED0] p-6 sm:p-8 shadow-sm flex flex-col justify-between">
+   571	                  <div>
+   572	                    <div className="flex items-center justify-between mb-6 pb-3 border-b border-[#F3EFE9]">
+   573	                      <div>
+   574	                        <h3 className="text-xl font-bold text-[#1F2937] flex items-center gap-2">
+   575	                          <BookOpen className="w-5 h-5 text-[#C49A3A]" /> Meeting Notes
+   576	                        </h3>
+   577	                        <p className="text-xs text-[#737373] mt-0.5">Session summaries, takeaways, and feedback</p>
+   578	                      </div>
+   579	                      <button type="button"
+   580	                        onClick={() => setShowNoteModal(true)}
+   581	                        className="bg-[#1E3A8A] text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold hover:bg-[#152C69] transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+   582	                      >
+   583	                        <Plus className="w-4 h-4" /> Add Note
+   584	                      </button>
+   585	                    </div>
+   586	
+   587	                    <div className="space-y-4">
+   588	                      {meetingNotes.length === 0 ? (
+   589	                        <div className="text-center py-12 bg-[#F8F5F0] rounded-2xl border border-dashed border-[#D1D5DB]">
+   590	                          <BookOpen className="w-8 h-8 text-[#A09080] mx-auto mb-2 opacity-50" />
+   591	                          <p className="text-[#6B7280] text-sm font-medium">No meeting notes logged yet.</p>
+   592	                          <p className="text-xs text-[#9CA3AF] mt-1">Capture mentor feedback and session learnings here.</p>
+   593	                        </div>
+   594	                      ) : (
+   595	                        meetingNotes.map((note) => (
+   596	                          <div
+   597	                            key={note.id}
+   598	                            className="bg-[#FFFDF8] border border-[#E8DED0] rounded-2xl p-5 hover:shadow-md transition-shadow"
+   599	                          >
+   600	                            <div className="flex justify-between items-start mb-3">
+   601	                              <h4 className="font-bold text-[#1F2937] text-base sm:text-lg">{note.meeting_topic}</h4>
+   602	                              <span className="text-xs font-semibold text-[#6B7280] bg-[#F3F4F6] px-2.5 py-1 rounded-lg flex items-center gap-1">
+   603	                                <Calendar className="w-3 h-3" /> {new Date(note.created_at).toLocaleDateString()}
+   604	                              </span>
+   605	                            </div>
+   606	                            <div className="space-y-3 mt-4 text-sm text-[#4B5563]">
+   607	                              <div>
+   608	                                <strong className="text-[#374151] block mb-1">Notes:</strong>
+   609	                                <p className="whitespace-pre-wrap leading-relaxed">{note.notes}</p>
+   610	                              </div>
+   611	                              <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100">
+   612	                                <strong className="text-[#1E3A8A] block mb-1">What I Learnt:</strong>
+   613	                                <p className="whitespace-pre-wrap">{note.learnt}</p>
+   614	                              </div>
+   615	                              {note.feedback && (
+   616	                                <div className="p-3 bg-[#F8F5F0] rounded-xl border border-[#E8DED0]">
+   617	                                  <strong className="text-[#C49A3A] block mb-1 flex items-center gap-1">
+   618	                                    <MessageSquare className="w-3 h-3" /> Feedback:
+   619	                                  </strong>
+   620	                                  <p className="whitespace-pre-wrap">{note.feedback}</p>
+   621	                                </div>
+   622	                              )}
+   623	                            </div>
+   624	                          </div>
+   625	                        ))
+   626	                      )}
+   627	                    </div>
+   628	                  </div>
+   629	                </div>
+   630	              )}
+   631	
+   632	              {/* Skills Updates Section */}
+   633	              {(activeSectionView === 'all' || activeSectionView === 'skills') && (
+   634	                <div className="bg-white rounded-3xl border border-[#E8DED0] p-6 sm:p-8 shadow-sm flex flex-col justify-between">
+   635	                  <div>
+   636	                    <div className="flex items-center justify-between mb-6 pb-3 border-b border-[#F3EFE9]">
+   637	                      <div>
+   638	                        <h3 className="text-xl font-bold text-[#1F2937] flex items-center gap-2">
+   639	                          <Sparkles className="w-5 h-5 text-emerald-600" /> Skills & Technologies
+   640	                        </h3>
+   641	                        <p className="text-xs text-[#737373] mt-0.5">Track programming tools, AI models, and frameworks</p>
+   642	                      </div>
+   643	                      <button type="button"
+   644	                        onClick={() => setShowSkillModal(true)}
+   645	                        className="bg-[#1E3A8A] text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold hover:bg-[#152C69] transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+   646	                      >
+   647	                        <Plus className="w-4 h-4" /> Add Skill
+   648	                      </button>
+   649	                    </div>
+   650	
+   651	                    <div className="space-y-4">
+   652	                      {skillUpdates.length === 0 ? (
+   653	                        <div className="text-center py-12 bg-[#F8F5F0] rounded-2xl border border-dashed border-[#D1D5DB]">
+   654	                          <Sparkles className="w-8 h-8 text-emerald-600 mx-auto mb-2 opacity-50" />
+   655	                          <p className="text-[#6B7280] text-sm font-medium">No new skills or technologies logged yet.</p>
+   656	                          <p className="text-xs text-[#9CA3AF] mt-1">Log tools like LangChain, Next.js, Gemini API, Python.</p>
+   657	                        </div>
+   658	                      ) : (
+   659	                        skillUpdates.map((skill) => (
+   660	                          <div
+   661	                            key={skill.id}
+   662	                            className="bg-[#FFFDF8] border border-[#E8DED0] rounded-2xl p-5 hover:shadow-md transition-shadow"
+   663	                          >
+   664	                            <div className="flex justify-between items-start mb-2">
+   665	                              <h4 className="font-bold text-[#1F2937] text-base sm:text-lg text-emerald-700">
+   666	                                {skill.skill_name}
+   667	                              </h4>
+   668	                              <span className="text-xs font-semibold text-[#6B7280] bg-[#F3F4F6] px-2.5 py-1 rounded-lg flex items-center gap-1">
+   669	                                <Calendar className="w-3 h-3" /> {new Date(skill.created_at).toLocaleDateString()}
+   670	                              </span>
+   671	                            </div>
+   672	                            <div className="mt-3 text-sm text-[#4B5563]">
+   673	                              <p className="whitespace-pre-wrap leading-relaxed">{skill.description}</p>
+   674	                            </div>
+   675	                          </div>
+   676	                        ))
+   677	                      )}
+   678	                    </div>
+   679	                  </div>
+   680	                </div>
+   681	              )}
+   682	            </div>
+   683	          )}
+   684	
+   685	          {/* SECTION 3: Project Documents & Prompt Artifacts */}
+   686	          {(activeSectionView === 'all' || activeSectionView === 'project-docs') && (
+   687	            <div className="bg-white rounded-3xl border border-[#E8DED0] p-6 sm:p-8 shadow-sm space-y-6">
+   688	              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#F3EFE9]">
+   689	                <div>
+   690	                  <div className="flex items-center gap-2">
+   691	                    <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#1E3A8A] flex items-center justify-center">
+   692	                      <FileCode className="w-5 h-5" />
+   693	                    </div>
+   694	                    <h3 className="text-xl font-bold text-[#1F2937]">
+   695	                      Project Documents & Prompt Files
+   696	                    </h3>
+   697	                  </div>
+   698	                  <p className="text-xs sm:text-sm text-[#737373] mt-1">
+   699	                    Upload project documentation, technical specs, and <strong>Prompt Documents</strong> detailing all the prompts used to build your projects (.docx, .doc, .pdf, .txt).
+   700	                  </p>
+   701	                </div>
+   702	
+   703	                <button type="button"
+   704	                  onClick={() => setShowDocModal(true)}
+   705	                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1E3A8A] hover:bg-[#152C69] text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-xs cursor-pointer"
+   706	                >
+   707	                  <UploadCloud className="w-4 h-4" />
+   708	                  Upload Project / Prompt Doc
+   709	                </button>
+   710	              </div>
+   711	
+   712	              {projectDocs.length === 0 ? (
+   713	                <div className="text-center py-12 px-4 bg-[#F8F5F0] rounded-2xl border border-dashed border-[#D1D5DB]">
+   714	                  <FileText className="w-10 h-10 text-[#A09080] mx-auto mb-2 opacity-50" />
+   715	                  <h4 className="text-sm font-bold text-[#1F2937]">No Project Documents Uploaded Yet</h4>
+   716	                  <p className="text-xs text-[#737373] max-w-md mx-auto mt-1">
+   717	                    Share your Prompt Document (Word .docx or PDF listing all AI prompts used), architecture guides, or project documentation so mentors and admins can review your workflow.
+   718	                  </p>
+   719	                  <button type="button"
+   720	                    onClick={() => setShowDocModal(true)}
+   721	                    className="mt-4 px-4 py-2 bg-[#1E3A8A] text-white rounded-xl text-xs font-bold hover:bg-[#152C69] transition-colors cursor-pointer"
+   722	                  >
+   723	                    Upload First Document
+   724	                  </button>
+   725	                </div>
+   726	              ) : (
+   727	                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   728	                  {projectDocs.map((doc) => {
+   729	                    const badge = getDocBadge(doc.file_name);
+   730	                    return (
+   731	                      <div
+   732	                        key={doc.id}
+   733	                        className="bg-[#FFFDF8] rounded-2xl border border-[#E8DED0] p-5 hover:shadow-md transition-all flex flex-col justify-between"
+   734	                      >
+   735	                        <div className="space-y-3">
+   736	                          <div className="flex items-start justify-between gap-2">
+   737	                            <div className="flex items-center gap-2 flex-wrap">
+   738	                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${badge.color}`}>
+   739	                                {badge.label}
+   740	                              </span>
+   741	                              {doc.file_size ? (
+   742	                                <span className="text-[10px] text-[#737373] font-semibold bg-[#F3EFE9] px-2 py-0.5 rounded">
+   743	                                  {formatFileSize(doc.file_size)}
+   744	                                </span>
+   745	                              ) : null}
+   746	                            </div>
+   747	                            <span className="text-[11px] text-[#737373] flex items-center gap-1">
+   748	                              <Clock className="w-3 h-3 text-[#A09080]" />
+   749	                              {new Date(doc.created_at).toLocaleDateString()}
+   750	                            </span>
+   751	                          </div>
+   752	
+   753	                          <div>
+   754	                            <h4 className="text-base font-bold text-[#1F2937] leading-snug">{doc.title}</h4>
+   755	                            <p className="text-xs text-[#1E3A8A] font-medium truncate mt-0.5">{doc.file_name}</p>
+   756	                          </div>
+   757	
+   758	                          <div className="bg-[#F8F5F0]/70 rounded-xl p-3.5 border border-[#E8DED0]/60">
+   759	                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#6B5A4D] block mb-1">
+   760	                              Uploaded Document Details / Prompts Summary:
+   761	                            </span>
+   762	                            <p className="text-xs text-[#4B5563] whitespace-pre-wrap leading-relaxed line-clamp-4">
+   763	                              {doc.description}
+   764	                            </p>
+   765	                          </div>
+   766	                        </div>
+   767	
+   768	                        <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#F3EFE9]">
+   769	                          <div className="flex items-center gap-2">
+   770	                            <button type="button"
+   771	                              onClick={() => setPreviewDoc(doc)}
+   772	                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1E3A8A] hover:underline cursor-pointer"
+   773	                            >
+   774	                              <Eye className="w-3.5 h-3.5" />
+   775	                              Preview / Open
+   776	                            </button>
+   777	                            <a
+   778	                              href={doc.file_path}
+   779	                              download={doc.file_name}
+   780	                              target="_blank"
+   781	                              rel="noreferrer"
+   782	                              className="inline-flex items-center gap-1 text-xs font-semibold text-[#6B5A4D] hover:text-[#1F2937] px-2 py-1 bg-white border border-[#E8DED0] rounded-lg transition-colors cursor-pointer"
+   783	                            >
+   784	                              <Download className="w-3 h-3" />
+   785	                              Download
+   786	                            </a>
+   787	                          </div>
+   788	
+   789	                          <button type="button"
+   790	                            onClick={() => handleDeleteProjectDoc(doc.id, doc.file_path)}
+   791	                            className="p-1.5 text-[#737373] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+   792	                            title="Delete file"
+   793	                          >
+   794	                            <Trash2 className="w-4 h-4" />
+   795	                          </button>
+   796	                        </div>
+   797	                      </div>
+   798	                    );
+   799	                  })}
+   800	                </div>
+   801	              )}
+   802	            </div>
+   803	          )}
+   804	
+   805	          {/* SECTION 4: Overall Learning Process Notes */}
+   806	          {(activeSectionView === 'all' || activeSectionView === 'learning-process') && (
+   807	            <div className="bg-white rounded-3xl border border-[#E8DED0] p-6 sm:p-8 shadow-sm space-y-6">
+   808	              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#F3EFE9]">
+   809	                <div>
+   810	                  <div className="flex items-center gap-2">
+   811	                    <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#1E3A8A] flex items-center justify-center">
+   812	                      <Compass className="w-5 h-5" />
+   813	                    </div>
+   814	                    <h3 className="text-xl font-bold text-[#1F2937]">
+   815	                      Overall Learning Process Notes & Reflections
+   816	                    </h3>
+   817	                  </div>
+   818	                  <p className="text-xs sm:text-sm text-[#737373] mt-1">
+   819	                    Document your learning workflow, how you solve complex bugs, key study milestones, and self-evaluations over time.
+   820	                  </p>
+   821	                </div>
+   822	
+   823	                <button type="button"
+   824	                  onClick={() => setShowLearningModal(true)}
+   825	                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1E3A8A] hover:bg-[#152C69] text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-xs cursor-pointer"
+   826	                >
+   827	                  <Plus className="w-4 h-4" />
+   828	                  Add Learning Process Note
+   829	                </button>
+   830	              </div>
+   831	
+   832	              {learningNotes.length === 0 ? (
+   833	                <div className="text-center py-12 px-4 bg-[#F8F5F0] rounded-2xl border border-dashed border-[#D1D5DB]">
+   834	                  <Compass className="w-10 h-10 text-[#1E3A8A] mx-auto mb-2 opacity-50" />
+   835	                  <h4 className="text-sm font-bold text-[#1F2937]">No Learning Process Notes Yet</h4>
+   836	                  <p className="text-xs text-[#737373] max-w-md mx-auto mt-1">
+   837	                    Reflect on your overall educational journey: learning velocity, problem-solving strategies, architecture roadblocks overcome, and self-assessments.
+   838	                  </p>
+   839	                  <button type="button"
+   840	                    onClick={() => setShowLearningModal(true)}
+   841	                    className="mt-4 px-4 py-2 bg-[#1E3A8A] text-white rounded-xl text-xs font-bold hover:bg-[#152C69] transition-colors cursor-pointer"
+   842	                  >
+   843	                    Write First Reflection
+   844	                  </button>
+   845	                </div>
+   846	              ) : (
+   847	                <div className="space-y-4">
+   848	                  {learningNotes.map((note) => (
+   849	                    <div
+   850	                      key={note.id}
+   851	                      className="bg-[#FFFDF8] rounded-2xl border border-[#E8DED0] p-6 hover:shadow-md transition-all space-y-4"
+   852	                    >
+   853	                      <div className="flex items-start justify-between gap-3 pb-3 border-b border-[#F3EFE9]">
+   854	                        <div>
+   855	                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-100 text-[#1E3A8A]">
+   856	                            Learning Journey Note
+   857	                          </span>
+   858	                          <h4 className="text-lg font-bold text-[#1F2937] mt-1">{note.title}</h4>
+   859	                        </div>
+   860	                        <div className="flex items-center gap-3">
+   861	                          <span className="text-xs text-[#737373] flex items-center gap-1">
+   862	                            <Calendar className="w-3.5 h-3.5 text-[#1E3A8A]" />
+   863	                            {new Date(note.created_at).toLocaleDateString()}
+   864	                          </span>
+   865	                          <button type="button"
+   866	                            onClick={() => handleDeleteLearningNote(note.id)}
+   867	                            className="p-1.5 text-[#737373] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+   868	                            title="Delete note"
+   869	                          >
+   870	                            <Trash2 className="w-4 h-4" />
+   871	                          </button>
+   872	                        </div>
+   873	                      </div>
+   874	
+   875	                      {/* Notes Body */}
+   876	                      <div>
+   877	                        <h5 className="text-xs font-bold uppercase text-[#6B5A4D] tracking-wider mb-1">
+   878	                          Learning Methodology & Process Reflections
+   879	                        </h5>
+   880	                        <p className="text-sm text-[#374151] whitespace-pre-wrap leading-relaxed bg-[#F8F5F0]/60 p-4 rounded-xl border border-[#E8DED0]/60">
+   881	                          {note.notes}
+   882	                        </p>
+   883	                      </div>
+   884	
+   885	                      {/* Challenges & Milestones if provided */}
+   886	                      {(note.challenges || note.key_milestones) && (
+   887	                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+   888	                          {note.challenges && (
+   889	                            <div className="p-3.5 bg-amber-50/60 border border-amber-100 rounded-xl">
+   890	                              <span className="text-xs font-bold text-[#9A741E] flex items-center gap-1 mb-1">
+   891	                                <AlertCircle className="w-3.5 h-3.5" /> Challenges & Roadblocks Faced
+   892	                              </span>
+   893	                              <p className="text-xs text-[#4B5563] whitespace-pre-wrap leading-relaxed">
+   894	                                {note.challenges}
+   895	                              </p>
+   896	                            </div>
+   897	                          )}
+   898	                          {note.key_milestones && (
+   899	                            <div className="p-3.5 bg-emerald-50/60 border border-emerald-100 rounded-xl">
+   900	                              <span className="text-xs font-bold text-emerald-800 flex items-center gap-1 mb-1">
+   901	                                <Milestone className="w-3.5 h-3.5" /> Milestones & Next Targets
+   902	                              </span>
+   903	                              <p className="text-xs text-[#4B5563] whitespace-pre-wrap leading-relaxed">
+   904	                                {note.key_milestones}
+   905	                              </p>
+   906	                            </div>
+   907	                          )}
+   908	                        </div>
+   909	                      )}
+   910	                    </div>
+   911	                  ))}
+   912	                </div>
+   913	              )}
+   914	            </div>
+   915	          )}
+   916	        </div>
+   917	      )}
+   918	
+   919	      {/* MODAL 1: Meeting Note Modal */}
+   920	      <AnimatePresence>
+   921	        {showNoteModal && (
+   922	          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1F2937]/50 backdrop-blur-xs">
+   923	            <motion.div
+   924	              initial={{ opacity: 0, scale: 0.95 }}
+   925	              animate={{ opacity: 1, scale: 1 }}
+   926	              exit={{ opacity: 0, scale: 0.95 }}
+   927	              className="bg-white rounded-[24px] shadow-2xl w-full max-w-lg overflow-hidden border border-[#E8DED0] flex flex-col max-h-[85vh]"
+   928	            >
+   929	              <div className="flex-shrink-0 flex items-center justify-between p-5 sm:p-6 border-b border-[#E8DED0] bg-[#F8F5F0]">
+   930	                <h3 className="text-lg font-bold text-[#1F2937]">Add Meeting Note</h3>
+   931	                <button type="button"
+   932	                  onClick={() => setShowNoteModal(false)}
+   933	                  className="text-[#6B7280] hover:text-[#1F2937] transition-colors cursor-pointer"
+   934	                >
+   935	                  <X className="w-5 h-5" />
+   936	                </button>
+   937	              </div>
+   938	              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+   939	                {errorMsg && (
+   940	                  <div className="p-3 bg-red-50 text-red-600 text-sm font-medium rounded-xl border border-red-100">
+   941	                    {errorMsg}
+   942	                  </div>
+   943	                )}
+   944	                <div>
+   945	                  <label className="block text-sm font-semibold text-[#374151] mb-1">Meeting Topic / Title *</label>
+   946	                  <input
+   947	                    type="text"
+   948	                    value={noteForm.meeting_topic}
+   949	                    onChange={(e) => setNoteForm({ ...noteForm, meeting_topic: e.target.value })}
+   950	                    className="w-full px-4 py-2 bg-white border border-[#D1D5DB] rounded-xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent outline-none text-sm"
+   951	                    placeholder="e.g. Weekly Mentor Sync with Kumar Foundation"
+   952	                  />
+   953	                </div>
+   954	                <div>
+   955	                  <label className="block text-sm font-semibold text-[#374151] mb-1">Meeting Notes *</label>
+   956	                  <textarea
+   957	                    value={noteForm.notes}
+   958	                    onChange={(e) => setNoteForm({ ...noteForm, notes: e.target.value })}
+   959	                    rows={3}
+   960	                    className="w-full px-4 py-2 bg-white border border-[#D1D5DB] rounded-xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent outline-none resize-none text-sm"
+   961	                    placeholder="Key discussion points..."
+   962	                  />
+   963	                </div>
+   964	                <div>
+   965	                  <label className="block text-sm font-semibold text-[#374151] mb-1">What I Learnt *</label>
+   966	                  <textarea
+   967	                    value={noteForm.learnt}
+   968	                    onChange={(e) => setNoteForm({ ...noteForm, learnt: e.target.value })}
+   969	                    rows={3}
+   970	                    className="w-full px-4 py-2 bg-white border border-[#D1D5DB] rounded-xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent outline-none resize-none text-sm"
+   971	                    placeholder="Core takeaways & action items..."
+   972	                  />
+   973	                </div>
+   974	                <div>
+   975	                  <label className="block text-sm font-semibold text-[#374151] mb-1">Session Feedback (Optional)</label>
+   976	                  <textarea
+   977	                    value={noteForm.feedback}
+   978	                    onChange={(e) => setNoteForm({ ...noteForm, feedback: e.target.value })}
+   979	                    rows={2}
+   980	                    className="w-full px-4 py-2 bg-white border border-[#D1D5DB] rounded-xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent outline-none resize-none text-sm"
+   981	                    placeholder="Any feedback on the mentor sync..."
+   982	                  />
+   983	                </div>
+   984	              </div>
+   985	              <div className="flex-shrink-0 p-5 sm:p-6 border-t border-[#E8DED0] bg-[#F9FAFB] flex flex-col sm:flex-row justify-end gap-3">
+   986	                <button type="button"
+   987	                  onClick={() => setShowNoteModal(false)}
+   988	                  className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-[#4B5563] hover:text-[#111827] hover:bg-[#E5E7EB] rounded-xl transition-colors cursor-pointer"
+   989	                >
+   990	                  Cancel
+   991	                </button>
+   992	                <button type="button"
+   993	                  onClick={handleSaveNote}
+   994	                  disabled={submitting}
+   995	                  className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-white bg-[#1E3A8A] hover:bg-[#152C69] rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+   996	                >
+   997	                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save Note
+   998	                </button>
+   999	              </div>
+  1000	            </motion.div>
+  1001	          </div>
+  1002	        )}
+  1003	      </AnimatePresence>
+  1004	
+  1005	      {/* MODAL 2: Skill Modal */}
+  1006	      <AnimatePresence>
+  1007	        {showSkillModal && (
+  1008	          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1F2937]/50 backdrop-blur-xs">
+  1009	            <motion.div
+  1010	              initial={{ opacity: 0, scale: 0.95 }}
+  1011	              animate={{ opacity: 1, scale: 1 }}
+  1012	              exit={{ opacity: 0, scale: 0.95 }}
+  1013	              className="bg-white rounded-[24px] shadow-2xl w-full max-w-md overflow-hidden border border-[#E8DED0] flex flex-col max-h-[85vh]"
+  1014	            >
+  1015	              <div className="flex-shrink-0 flex items-center justify-between p-5 sm:p-6 border-b border-[#E8DED0] bg-[#F8F5F0]">
+  1016	                <h3 className="text-lg font-bold text-[#1F2937]">Log New Skill / Technology</h3>
+  1017	                <button type="button"
+  1018	                  onClick={() => setShowSkillModal(false)}
+  1019	                  className="text-[#6B7280] hover:text-[#1F2937] transition-colors cursor-pointer"
+  1020	                >
+  1021	                  <X className="w-5 h-5" />
+  1022	                </button>
+  1023	              </div>
+  1024	              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+  1025	                {errorMsg && (
+  1026	                  <div className="p-3 bg-red-50 text-red-600 text-sm font-medium rounded-xl border border-red-100">
+  1027	                    {errorMsg}
+  1028	                  </div>
+  1029	                )}
+  1030	                <div>
+  1031	                  <label className="block text-sm font-semibold text-[#374151] mb-1">Skill / Technology Name *</label>
+  1032	                  <input
+  1033	                    type="text"
+  1034	                    value={skillForm.skill_name}
+  1035	                    onChange={(e) => setSkillForm({ ...skillForm, skill_name: e.target.value })}
+  1036	                    className="w-full px-4 py-2 bg-white border border-[#D1D5DB] rounded-xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent outline-none text-sm"
+  1037	                    placeholder="e.g. Gemini AI, Tailwind CSS, Docker, Supabase"
+  1038	                  />
+  1039	                </div>
+  1040	                <div>
+  1041	                  <label className="block text-sm font-semibold text-[#374151] mb-1">Details / Description *</label>
+  1042	                  <textarea
+  1043	                    value={skillForm.description}
+  1044	                    onChange={(e) => setSkillForm({ ...skillForm, description: e.target.value })}
+  1045	                    rows={4}
+  1046	                    className="w-full px-4 py-2 bg-white border border-[#D1D5DB] rounded-xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent outline-none resize-none text-sm"
+  1047	                    placeholder="What concepts did you master, and how did you apply them?"
+  1048	                  />
+  1049	                </div>
+  1050	              </div>
+  1051	              <div className="flex-shrink-0 p-5 sm:p-6 border-t border-[#E8DED0] bg-[#F9FAFB] flex flex-col sm:flex-row justify-end gap-3">
+  1052	                <button type="button"
+  1053	                  onClick={() => setShowSkillModal(false)}
+  1054	                  className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-[#4B5563] hover:text-[#111827] hover:bg-[#E5E7EB] rounded-xl transition-colors cursor-pointer"
+  1055	                >
+  1056	                  Cancel
+  1057	                </button>
+  1058	                <button type="button"
+  1059	                  onClick={handleSaveSkill}
+  1060	                  disabled={submitting}
+  1061	                  className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-white bg-[#1E3A8A] hover:bg-[#152C69] rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+  1062	                >
+  1063	                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save Skill
+  1064	                </button>
+  1065	              </div>
+  1066	            </motion.div>
+  1067	          </div>
+  1068	        )}
+  1069	      </AnimatePresence>
+  1070	
+  1071	      {/* MODAL 3: Project Document & Prompt Upload Modal */}
+  1072	      <AnimatePresence>
+  1073	        {showDocModal && (
+  1074	          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1F2937]/50 backdrop-blur-xs">
+  1075	            <motion.div
+  1076	              initial={{ opacity: 0, scale: 0.95 }}
+  1077	              animate={{ opacity: 1, scale: 1 }}
+  1078	              exit={{ opacity: 0, scale: 0.95 }}
+  1079	              className="bg-white rounded-[24px] shadow-2xl w-full max-w-xl overflow-hidden border border-[#E8DED0] flex flex-col max-h-[90vh]"
+  1080	            >
+  1081	              <div className="flex-shrink-0 flex items-center justify-between p-5 sm:p-6 border-b border-[#E8DED0] bg-[#F8F5F0]">
+  1082	                <div className="flex items-center gap-2">
+  1083	                  <UploadCloud className="w-5 h-5 text-[#1E3A8A]" />
+  1084	                  <h3 className="text-lg font-bold text-[#1F2937]">Upload Project & Prompt Document</h3>
+  1085	                </div>
+  1086	                <button type="button"
+  1087	                  onClick={() => {
+  1088	                    setShowDocModal(false);
+  1089	                    setErrorMsg(null);
+  1090	                  }}
+  1091	                  className="text-[#6B7280] hover:text-[#1F2937] transition-colors cursor-pointer"
+  1092	                >
+  1093	                  <X className="w-5 h-5" />
+  1094	                </button>
+  1095	              </div>
+  1096	
+  1097	              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+  1098	                {errorMsg && (
+  1099	                  <div className="p-3 bg-red-50 text-red-600 text-sm font-medium rounded-xl border border-red-100 flex items-start gap-2">
+  1100	                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+  1101	                    <span>{errorMsg}</span>
+  1102	                  </div>
+  1103	                )}
+  1104	
+  1105	                <div>
+  1106	                  <label className="block text-xs font-bold uppercase text-[#6B5A4D] tracking-wider mb-1.5">
+  1107	                    Document Title / Project Association *
+  1108	                  </label>
+  1109	                  <input
+  1110	                    type="text"
+  1111	                    value={docForm.title}
+  1112	                    onChange={(e) => setDocForm({ ...docForm, title: e.target.value })}
+  1113	                    className="w-full px-4 py-2.5 bg-white border border-[#D1D5DB] rounded-xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent outline-none text-sm text-[#1F2937]"
+  1114	                    placeholder="e.g. AI Career Coach - Prompt Document & Workflow"
+  1115	                  />
+  1116	                </div>
+  1117	
+  1118	                <div>
+  1119	                  <label className="block text-xs font-bold uppercase text-[#6B5A4D] tracking-wider mb-1.5">
+  1120	                    Description & Contents Breakdown *
+  1121	                  </label>
+  1122	                  <p className="text-xs text-[#737373] mb-1.5">
+  1123	                    Mention what you are uploading (e.g., prompt document listing all prompts used in creating this project, system prompts, architecture specs, research findings).
+  1124	                  </p>
+  1125	                  <textarea
+  1126	                    value={docForm.description}
+  1127	                    onChange={(e) => setDocForm({ ...docForm, description: e.target.value })}
+  1128	                    rows={4}
+  1129	                    className="w-full px-4 py-2.5 bg-white border border-[#D1D5DB] rounded-xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent outline-none text-sm text-[#1F2937] resize-none"
+  1130	                    placeholder="e.g. This document contains the full list of prompt templates, few-shot examples, and chain-of-thought instructions used to build the automated mentor assistant..."
+  1131	                  />
+  1132	                </div>
+  1133	
+  1134	                <div>
+  1135	                  <label className="block text-xs font-bold uppercase text-[#6B5A4D] tracking-wider mb-1.5">
+  1136	                    Select File (.docx, .doc, .pdf, .txt, up to 5MB) *
+  1137	                  </label>
+  1138	                  <div className="border-2 border-dashed border-[#D1D5DB] hover:border-[#1E3A8A] rounded-2xl p-6 text-center bg-[#FFFDF8] transition-colors cursor-pointer relative">
+  1139	                    <input
+  1140	                      id="log-file-upload"
+  1141	                      ref={fileInputRef}
+  1142	                      type="file"
+  1143	                      accept=".docx,.doc,.pdf,.txt,.md,.rtf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+  1144	                      onChange={handleFileSelection}
+  1145	                      onClick={(e) => { e.currentTarget.value = ''; }}
+  1146	                      className="hidden"
+  1147	                    />
+  1148	                    <label htmlFor="log-file-upload" className="flex flex-col items-center w-full h-full cursor-pointer">
+  1149	                      <FileCheck className="w-10 h-10 text-[#1E3A8A] mb-2" />
+  1150	                      <p className="text-sm font-semibold text-[#1F2937]">
+  1151	                        {selectedDocFile ? selectedDocFile.name : 'Click to select or drag & drop file'}
+  1152	                      </p>
+  1153	                      <p className="text-xs text-[#737373] mt-1">
+  1154	                        {selectedDocFile
+  1155	                          ? `Size: ${formatFileSize(selectedDocFile.size)}`
+  1156	                          : 'Supports Word (.docx, .doc), PDF (.pdf), Text (.txt, .md)'}
+  1157	                      </p>
+  1158	                    </label>
+  1159	                  </div>
+  1160	                </div>
+  1161	              </div>
+  1162	
+  1163	              <div className="flex-shrink-0 p-5 sm:p-6 border-t border-[#E8DED0] bg-[#F9FAFB] flex flex-col sm:flex-row justify-end gap-3">
+  1164	                <button type="button"
+  1165	                  onClick={() => {
+  1166	                    setShowDocModal(false);
+  1167	                    setErrorMsg(null);
+  1168	                  }}
+  1169	                  className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-[#4B5563] hover:text-[#111827] hover:bg-[#E5E7EB] rounded-xl transition-colors cursor-pointer"
+  1170	                >
+  1171	                  Cancel
+  1172	                </button>
+  1173	                <button type="button"
+  1174	                  onClick={handleUploadProjectDoc}
+  1175	                  disabled={submitting || !selectedDocFile}
+  1176	                  className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-white bg-[#1E3A8A] hover:bg-[#152C69] rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+  1177	                >
+  1178	                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+  1179	                  {submitting ? 'Uploading...' : 'Upload Document'}
+  1180	                </button>
+  1181	              </div>
+  1182	            </motion.div>
+  1183	          </div>
+  1184	        )}
+  1185	      </AnimatePresence>
+  1186	
+  1187	      {/* MODAL 4: Overall Learning Process Note Modal */}
+  1188	      <AnimatePresence>
+  1189	        {showLearningModal && (
+  1190	          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1F2937]/50 backdrop-blur-xs">
+  1191	            <motion.div
+  1192	              initial={{ opacity: 0, scale: 0.95 }}
+  1193	              animate={{ opacity: 1, scale: 1 }}
+  1194	              exit={{ opacity: 0, scale: 0.95 }}
+  1195	              className="bg-white rounded-[24px] shadow-2xl w-full max-w-xl overflow-hidden border border-[#E8DED0] flex flex-col max-h-[90vh]"
+  1196	            >
+  1197	              <div className="flex-shrink-0 flex items-center justify-between p-5 sm:p-6 border-b border-[#E8DED0] bg-[#F8F5F0]">
+  1198	                <div className="flex items-center gap-2">
+  1199	                  <Compass className="w-5 h-5 text-[#1E3A8A]" />
+  1200	                  <h3 className="text-lg font-bold text-[#1F2937]">Add Learning Process Note</h3>
+  1201	                </div>
+  1202	                <button type="button"
+  1203	                  onClick={() => {
+  1204	                    setShowLearningModal(false);
+  1205	                    setErrorMsg(null);
+  1206	                  }}
+  1207	                  className="text-[#6B7280] hover:text-[#1F2937] transition-colors cursor-pointer"
+  1208	                >
+  1209	                  <X className="w-5 h-5" />
+  1210	                </button>
+  1211	              </div>
+  1212	
+  1213	              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+  1214	                {errorMsg && (
+  1215	                  <div className="p-3 bg-red-50 text-red-600 text-sm font-medium rounded-xl border border-red-100 flex items-start gap-2">
+  1216	                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+  1217	                    <span>{errorMsg}</span>
+  1218	                  </div>
+  1219	                )}
+  1220	
+  1221	                <div>
+  1222	                  <label className="block text-xs font-bold uppercase text-[#6B5A4D] tracking-wider mb-1.5">
+  1223	                    Reflection Title / Focus Area *
+  1224	                  </label>
+  1225	                  <input
+  1226	                    type="text"
+  1227	                    value={learningForm.title}
+  1228	                    onChange={(e) => setLearningForm({ ...learningForm, title: e.target.value })}
+  1229	                    className="w-full px-4 py-2.5 bg-white border border-[#D1D5DB] rounded-xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent outline-none text-sm text-[#1F2937]"
+  1230	                    placeholder="e.g. Navigating Asynchronous Architecture & State Persistence"
+  1231	                  />
+  1232	                </div>
+  1233	
+  1234	                <div>
+  1235	                  <label className="block text-xs font-bold uppercase text-[#6B5A4D] tracking-wider mb-1.5">
+  1236	                    Learning Process & Study Methodology *
+  1237	                  </label>
+  1238	                  <textarea
+  1239	                    value={learningForm.notes}
+  1240	                    onChange={(e) => setLearningForm({ ...learningForm, notes: e.target.value })}
+  1241	                    rows={4}
+  1242	                    className="w-full px-4 py-2.5 bg-white border border-[#D1D5DB] rounded-xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent outline-none text-sm text-[#1F2937] resize-none"
+  1243	                    placeholder="Reflect on how you approached learning: reading technical docs, structuring problem breakdown, building prototypes, debugging strategies..."
+  1244	                  />
+  1245	                </div>
+  1246	
+  1247	                <div>
+  1248	                  <label className="block text-xs font-bold uppercase text-[#6B5A4D] tracking-wider mb-1.5">
+  1249	                    Challenges & Roadblocks Overcome (Optional)
+  1250	                  </label>
+  1251	                  <textarea
+  1252	                    value={learningForm.challenges}
+  1253	                    onChange={(e) => setLearningForm({ ...learningForm, challenges: e.target.value })}
+  1254	                    rows={2}
+  1255	                    className="w-full px-4 py-2.5 bg-white border border-[#D1D5DB] rounded-xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent outline-none text-sm text-[#1F2937] resize-none"
+  1256	                    placeholder="What was tricky and how did you resolve it?"
+  1257	                  />
+  1258	                </div>
+  1259	
+  1260	                <div>
+  1261	                  <label className="block text-xs font-bold uppercase text-[#6B5A4D] tracking-wider mb-1.5">
+  1262	                    Milestones & Next Targets (Optional)
+  1263	                  </label>
+  1264	                  <textarea
+  1265	                    value={learningForm.key_milestones}
+  1266	                    onChange={(e) => setLearningForm({ ...learningForm, key_milestones: e.target.value })}
+  1267	                    rows={2}
+  1268	                    className="w-full px-4 py-2.5 bg-white border border-[#D1D5DB] rounded-xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent outline-none text-sm text-[#1F2937] resize-none"
+  1269	                    placeholder="What is the next capability or project milestone you aim to achieve?"
+  1270	                  />
+  1271	                </div>
+  1272	              </div>
+  1273	
+  1274	              <div className="flex-shrink-0 p-5 sm:p-6 border-t border-[#E8DED0] bg-[#F9FAFB] flex flex-col sm:flex-row justify-end gap-3">
+  1275	                <button type="button"
+  1276	                  onClick={() => {
+  1277	                    setShowLearningModal(false);
+  1278	                    setErrorMsg(null);
+  1279	                  }}
+  1280	                  className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-[#4B5563] hover:text-[#111827] hover:bg-[#E5E7EB] rounded-xl transition-colors cursor-pointer"
+  1281	                >
+  1282	                  Cancel
+  1283	                </button>
+  1284	                <button type="button"
+  1285	                  onClick={handleSaveLearningNote}
+  1286	                  disabled={submitting}
+  1287	                  className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-white bg-[#1E3A8A] hover:bg-[#152C69] rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+  1288	                >
+  1289	                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+  1290	                  {submitting ? 'Saving...' : 'Save Learning Reflection'}
+  1291	                </button>
+  1292	              </div>
+  1293	            </motion.div>
+  1294	          </div>
+  1295	        )}
+  1296	      </AnimatePresence>
+  1297	
+  1298	      {/* DOCUMENT PREVIEW MODAL */}
+  1299	      {previewDoc && (
+  1300	        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+  1301	          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col p-6 shadow-2xl border border-[#E8DED0] animate-fadeIn">
+  1302	            <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#F3EFE9]">
+  1303	              <div>
+  1304	                <h3 className="text-base font-bold text-[#1F2937] truncate">{previewDoc.title}</h3>
+  1305	                <p className="text-xs text-[#737373]">{previewDoc.file_name}</p>
+  1306	              </div>
+  1307	              <div className="flex items-center gap-2">
+  1308	                {previewUrl && (
+  1309	                  <>
+  1310	                    <a
+  1311	                      href={previewUrl}
+  1312	                      download={previewDoc.file_name}
+  1313	                      target="_blank"
+  1314	                      rel="noreferrer"
+  1315	                      className="px-3 py-1.5 bg-[#FFFDF8] hover:bg-[#F3EFE9] border border-[#E8DED0] text-[#1E3A8A] rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+  1316	                      title="Download file"
+  1317	                    >
+  1318	                      <Download className="w-3.5 h-3.5" />
+  1319	                      Download
+  1320	                    </a>
+  1321	                    <a
+  1322	                      href={previewUrl}
+  1323	                      target="_blank"
+  1324	                      rel="noreferrer"
+  1325	                      className="px-3 py-1.5 bg-[#1E3A8A] text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+  1326	                      title="Open in new tab"
+  1327	                    >
+  1328	                      <ExternalLink className="w-3.5 h-3.5" />
+  1329	                      Open Tab
+  1330	                    </a>
+  1331	                  </>
+  1332	                )}
+  1333	                <button type="button"
+  1334	                  onClick={() => {
+  1335	                    setPreviewDoc(null);
+  1336	                    setPreviewUrl('');
+  1337	                    setPreviewError(null);
+  1338	                  }}
+  1339	                  className="p-1.5 text-[#737373] hover:text-[#1F2937] hover:bg-[#F3EFE9] rounded-lg transition-colors cursor-pointer"
+  1340	                >
+  1341	                  <X className="w-5 h-5" />
+  1342	                </button>
+  1343	              </div>
+  1344	            </div>
+  1345	
+  1346	            <div className="flex-1 overflow-auto bg-[#F9F6F0] rounded-xl flex flex-col items-center justify-center p-2 min-h-[380px]">
+  1347	              {loadingPreview ? (
+  1348	                <div className="flex flex-col items-center justify-center gap-2 text-[#737373] py-12">
+  1349	                  <Loader2 className="w-8 h-8 animate-spin text-[#1E3A8A]" />
+  1350	                  <p className="text-xs">Loading document preview...</p>
+  1351	                </div>
+  1352	              ) : previewError ? (
+  1353	                <div className="text-center p-6 bg-white rounded-xl border border-red-200">
+  1354	                  <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-2" />
+  1355	                  <p className="text-xs font-bold text-[#1F2937]">Preview Notice</p>
+  1356	                  <p className="text-[11px] text-[#737373] mt-1 mb-3">{previewError}</p>
+  1357	                  {previewUrl && (
+  1358	                    <a
+  1359	                      href={previewUrl}
+  1360	                      target="_blank"
+  1361	                      rel="noreferrer"
+  1362	                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1E3A8A] text-white text-xs font-bold rounded-lg"
+  1363	                    >
+  1364	                      <ExternalLink className="w-3.5 h-3.5" />
+  1365	                      Open Directly
+  1366	                    </a>
+  1367	                  )}
+  1368	                </div>
+  1369	              ) : !previewUrl ? (
+  1370	                <div className="text-center p-6">
+  1371	                  <FileText className="w-12 h-12 text-[#A09080] mx-auto mb-2" />
+  1372	                  <p className="text-sm font-semibold text-[#1F2937]">Preview Not Available</p>
+  1373	                  <p className="text-xs text-[#737373] mt-1">
+  1374	                    Please use the download button to view this file.
+  1375	                  </p>
+  1376	                </div>
+  1377	              ) : isPdf ? (
+  1378	                <iframe
+  1379	                  src={previewUrl}
+  1380	                  title={previewDoc.file_name}
+  1381	                  className="w-full h-[520px] rounded-lg border border-[#E8DED0] bg-white shadow-xs"
+  1382	                />
+  1383	              ) : isImage ? (
+  1384	                <img
+  1385	                  src={previewUrl}
+  1386	                  alt={previewDoc.file_name}
+  1387	                  className="max-h-[500px] max-w-full object-contain rounded-lg shadow-xs border border-[#E8DED0]"
+  1388	                />
+  1389	              ) : (
+  1390	                <div className="text-center p-6 bg-white rounded-xl border border-[#E8DED0] max-w-md">
+  1391	                  <FileCode className="w-12 h-12 text-[#1E3A8A] mx-auto mb-3" />
+  1392	                  <h4 className="text-sm font-bold text-[#1F2937] mb-1">{previewDoc.file_name}</h4>
+  1393	                  <p className="text-xs text-[#737373] mb-4">
+  1394	                    Word (.docx / .doc) and text documents can be downloaded directly to view all formatting and prompts.
+  1395	                  </p>
+  1396	                  <a
+  1397	                    href={previewUrl}
+  1398	                    download={previewDoc.file_name}
+  1399	                    target="_blank"
+  1400	                    rel="noreferrer"
+  1401	                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#1E3A8A] text-white rounded-xl text-xs font-bold shadow-xs hover:bg-[#152C69] transition-colors"
+  1402	                  >
+  1403	                    <Download className="w-4 h-4" />
+  1404	                    Download File Now
+  1405	                  </a>
+  1406	                </div>
+  1407	              )}
+  1408	            </div>
+  1409	          </div>
+  1410	        </div>
+  1411	      )}
+  1412	    </div>
+  1413	  );
+  1414	};

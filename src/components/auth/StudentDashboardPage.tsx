@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Award } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabaseClient';
 import { StudentProfile, AcademicRecord, AcademicDocument, EnglishLearningSummary, NotificationItem } from '../../types/student';
@@ -10,6 +11,7 @@ import { StudentDocumentsTab } from '../student/StudentDocumentsTab';
 import { StudentPreviousResultsTab } from '../student/StudentPreviousResultsTab';
 import { StudentEnglishTab } from '../student/StudentEnglishTab';
 import { StudentNotificationsTab } from '../student/StudentNotificationsTab';
+import { StudentWorksTab } from "../student/StudentWorksTab";
 import { StudentProjectsTab } from '../student/StudentProjectsTab';
 import { StudentLogsTab } from '../student/StudentLogsTab';
 import { LOGO_URL } from '../../data/foundationData';
@@ -41,6 +43,7 @@ type DashboardSection =
   | 'documents'
   | 'previous-results'
   | 'english'
+  | 'student-works'
   | 'projects'
   | 'logs'
   | 'notifications';
@@ -359,6 +362,7 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ setA
     { id: 'documents', label: 'Upload Marks & Documents', icon: UploadCloud },
     { id: 'previous-results', label: 'Previous Results', icon: History },
     { id: 'english', label: 'English Companion', icon: Sparkles },
+    { id: 'student-works', label: 'Student Works', icon: Award },
     { id: 'projects', label: 'My Projects', icon: Briefcase },
     { id: 'logs', label: 'Logs & Reflections', icon: FileText },
     {
@@ -634,6 +638,17 @@ export const StudentDashboardPage: React.FC<StudentDashboardPageProps> = ({ setA
                 />
               )}
 
+                            {activeSection === 'student-works' && (
+                <motion.div
+                  key="student-works"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <StudentWorksTab />
+                </motion.div>
+              )}
               {activeSection === 'projects' && (
                 <StudentProjectsTab />
               )}

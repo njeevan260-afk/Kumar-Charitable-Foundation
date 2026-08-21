@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import os
+
+content = """import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../supabaseClient';
 import { StudentProject, StudentProjectDocument } from '../../types/student';
 import { Briefcase, Link as LinkIcon, Star, MessageSquare, Plus, Loader2, ExternalLink, FileText, UploadCloud, Download, Eye, FileCode, CheckCircle2, AlertCircle, Trash2, X } from 'lucide-react';
@@ -36,6 +38,9 @@ export const StudentProjectsTab: React.FC = () => {
   const [projectLink, setProjectLink] = useState('');
 
   // Document Upload States
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [showDocModal, setShowDocModal] = useState(false);
+  const [docForm, setDocForm] = useState({ title: '', description: '' });
   const [selectedDocFile, setSelectedDocFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -160,6 +165,52 @@ export const StudentProjectsTab: React.FC = () => {
     }
   };
 
+  const handleUploadProjectDoc = async () => {
+    if (!profile || !selectedDocFile || !docForm.title || !activeProjectId) return;
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const fileExt = selectedDocFile.name.split('.').pop();
+      const fileName = `${generateUUID()}.${fileExt}`;
+      const filePath = `${profile.id}/project-docs/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('student_documents')
+        .upload(filePath, selectedDocFile);
+
+      if (uploadError) throw uploadError;
+
+      const newDoc = {
+        user_id: profile.id,
+        project_id: activeProjectId,
+        title: docForm.title,
+        description: docForm.description,
+        file_path: filePath,
+        file_name: selectedDocFile.name,
+        file_type: selectedDocFile.type,
+        file_size: selectedDocFile.size
+      };
+
+      const { data, error: dbError } = await supabase
+        .from('student_project_documents')
+        .insert([newDoc])
+        .select()
+        .single();
+
+      if (dbError) throw dbError;
+
+      setProjectDocs((prev) => [data, ...prev]);
+      setShowDocModal(false);
+      setDocForm({ title: '', description: '' });
+      setSelectedDocFile(null);
+      setActiveProjectId(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload document');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleDeleteProjectDoc = async (docId: string, filePath: string) => {
     if (!window.confirm('Are you sure you want to delete this document?')) return;
@@ -266,57 +317,6 @@ export const StudentProjectsTab: React.FC = () => {
                 placeholder="Describe your project, technologies used, and your role..."
               />
             </div>
-            
-            {/* Project Document Upload in the same form */}
-            <div>
-              <label className="block text-sm font-medium text-[#4F4F4F] mb-1">Project Document (Optional)</label>
-              <div className="mt-1">
-                <input
-                  type="file"
-                  id="project_doc_upload"
-                  className="hidden"
-                  accept=".docx,.doc,.pdf,.txt,.md,.rtf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
-                  onChange={handleFileSelection}
-                  ref={fileInputRef}
-                />
-                {!selectedDocFile ? (
-                  <label
-                    htmlFor="project_doc_upload"
-                    className="flex flex-col items-center justify-center w-full px-4 py-6 border-2 border-dashed border-[#D1D5DB] hover:border-[#1E3A8A] hover:bg-[#F3EFE9] rounded-xl cursor-pointer transition-colors"
-                  >
-                    <UploadCloud className="w-8 h-8 text-[#A09080] mb-2" />
-                    <span className="text-sm font-bold text-[#1F2937]">Click to select a document</span>
-                    <span className="text-xs text-[#737373] mt-1">PDF, DOCX, DOC, TXT (Max 5MB)</span>
-                  </label>
-                ) : (
-                  <div className="flex items-center justify-between p-4 bg-[#F8F5F1] border border-[#E8DED0] rounded-xl">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="p-2 bg-white rounded-lg shadow-sm shrink-0">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-[#1F2937] truncate">{selectedDocFile.name}</p>
-                        <p className="text-xs text-[#737373]">
-                          Size: {formatFileSize(selectedDocFile.size)}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedDocFile(null);
-                        if (fileInputRef.current) fileInputRef.current.value = '';
-                      }}
-                      className="p-1.5 text-[#9CA3AF] hover:text-red-500 hover:bg-white rounded-lg transition-colors shrink-0"
-                      title="Remove file"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
             <div className="flex justify-end pt-2">
               <button
                 type="submit"
@@ -380,7 +380,16 @@ export const StudentProjectsTab: React.FC = () => {
                         <FileText className="w-4 h-4 text-[#1E3A8A]" />
                         Project Documentation & Artifacts
                       </h4>
-                      
+                      <button
+                        onClick={() => {
+                          setActiveProjectId(project.id);
+                          setShowDocModal(true);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#1E3A8A] bg-[#F8F5F1] hover:bg-[#E8DED0] rounded-lg transition-colors"
+                      >
+                        <UploadCloud className="w-4 h-4" />
+                        Upload Document
+                      </button>
                     </div>
 
                     {myDocs.length === 0 ? (
@@ -464,62 +473,144 @@ export const StudentProjectsTab: React.FC = () => {
         )}
       </div>
 
-      
-      {/* Unlinked/General Documents */}
-      {(() => {
-        const unlinkedDocs = projectDocs.filter(doc => !doc.project_id || !projects.find(p => p.id === doc.project_id));
-        if (unlinkedDocs.length === 0) return null;
-        return (
-          <div className="mt-8">
-            <h3 className="text-lg font-bold text-[#3B2A20] mb-4">Other Uploaded Documents</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {unlinkedDocs.map((doc) => {
-                const badge = getDocBadge(doc.file_name);
-                const BadgeIcon = badge.icon;
-                return (
-                  <div key={doc.id} className="group relative flex items-start gap-3 p-3 bg-white border border-[#E8DED0] rounded-xl hover:border-[#1E3A8A] transition-colors">
-                    <div className={`p-2 rounded-lg ${badge.bg} ${badge.text} shrink-0`}>
-                      <BadgeIcon className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h5 className="text-sm font-bold text-[#1F2937] truncate mb-0.5" title={doc.title}>
-                        {doc.title}
-                      </h5>
-                      <p className="text-xs text-[#737373] truncate" title={doc.description}>
-                        {doc.description || 'No description provided'}
-                      </p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-[#F3EFE9] text-[#4B5563]">
-                          {badge.label}
-                        </span>
-                        <span className="text-[10px] text-[#A09080]">
-                          {formatFileSize(doc.file_size)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => setPreviewDoc(doc)}
-                        className="p-1.5 text-[#1E3A8A] hover:bg-[#F3EFE9] rounded-lg transition-colors"
-                        title="Preview Document"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteProjectDoc(doc.id, doc.file_path)}
-                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete Document"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+      {/* UPLOAD DOCUMENT MODAL */}
+      <AnimatePresence>
+        {showDocModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-[#E8DED0]"
+            >
+              <div className="flex items-center justify-between p-5 sm:p-6 border-b border-[#E8DED0] bg-[#FFFDF8]">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-[#F3EFE9] rounded-xl">
+                    <FileText className="w-5 h-5 text-[#1E3A8A]" />
                   </div>
-                );
-              })}
-            </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-[#1F2937] font-serif">Upload Project Document</h3>
+                    <p className="text-xs text-[#737373]">Share code, reports, or prompt logs</p>
+                  </div>
+                </div>
+                <button type="button"
+                  onClick={() => {
+                    setShowDocModal(false);
+                    setDocForm({ title: '', description: '' });
+                    setSelectedDocFile(null);
+                    setActiveProjectId(null);
+                  }}
+                  className="p-2 text-[#9CA3AF] hover:text-[#1F2937] hover:bg-[#F3EFE9] rounded-xl transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-5 sm:p-6 space-y-5">
+                <div>
+                  <label className="block text-sm font-semibold text-[#374151] mb-1.5">
+                    Document Title <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={docForm.title}
+                    onChange={(e) => setDocForm({ ...docForm, title: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-white border border-[#D1D5DB] rounded-xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent outline-none text-sm text-[#1F2937] transition-all"
+                    placeholder="e.g. Initial Prompt Strategy, Architecture Diagram"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-[#374151] mb-1.5">
+                    Description (Optional)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={docForm.description}
+                    onChange={(e) => setDocForm({ ...docForm, description: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-white border border-[#D1D5DB] rounded-xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent outline-none text-sm text-[#1F2937] resize-none transition-all"
+                    placeholder="Briefly describe what this file contains..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-[#374151] mb-1.5">
+                    Select File <span className="text-red-500">*</span>
+                  </label>
+                  
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelection}
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,.txt,.md,.rtf,.jpg,.jpeg,.png,.webp"
+                  />
+
+                  {!selectedDocFile ? (
+                    <div 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="border-2 border-dashed border-[#D1D5DB] rounded-xl p-8 text-center cursor-pointer hover:border-[#1E3A8A] hover:bg-[#F8F5F1] transition-all group"
+                    >
+                      <UploadCloud className="w-8 h-8 text-[#9CA3AF] group-hover:text-[#1E3A8A] mx-auto mb-3 transition-colors" />
+                      <p className="text-sm font-medium text-[#4B5563] group-hover:text-[#1E3A8A]">
+                        Click to browse files
+                      </p>
+                      <p className="text-xs text-[#9CA3AF] mt-1">
+                        PDF, Word, TXT, MD, Images (Max 5MB)
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-4 bg-[#F8F5F1] border border-[#E8DED0] rounded-xl">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-2 bg-white rounded-lg shadow-sm shrink-0">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-[#1F2937] truncate">{selectedDocFile.name}</p>
+                          <p className="text-xs text-[#737373]">
+                            Size: {formatFileSize(selectedDocFile.size)}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDocFile(null)}
+                        className="p-1.5 text-[#9CA3AF] hover:text-red-500 hover:bg-white rounded-lg transition-colors shrink-0"
+                        title="Remove file"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex-shrink-0 p-5 sm:p-6 border-t border-[#E8DED0] bg-[#F9FAFB] flex justify-end gap-3">
+                <button type="button"
+                  onClick={() => {
+                    setShowDocModal(false);
+                    setDocForm({ title: '', description: '' });
+                    setSelectedDocFile(null);
+                    setActiveProjectId(null);
+                  }}
+                  className="px-5 py-2.5 text-sm font-semibold text-[#4B5563] hover:text-[#1F2937] hover:bg-[#E5E7EB] rounded-xl transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button type="button"
+                  onClick={handleUploadProjectDoc}
+                  disabled={submitting || !selectedDocFile || !docForm.title.trim()}
+                  className="px-5 py-2.5 text-sm font-semibold text-white bg-[#1E3A8A] hover:bg-[#152C69] rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                >
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+                  {submitting ? 'Uploading...' : 'Upload Document'}
+                </button>
+              </div>
+            </motion.div>
           </div>
-        );
-      })()}
+        )}
+      </AnimatePresence>
 
       {/* DOCUMENT PREVIEW MODAL */}
       {previewDoc && (
@@ -638,3 +729,8 @@ export const StudentProjectsTab: React.FC = () => {
     </div>
   );
 };
+"""
+
+with open('src/components/student/StudentProjectsTab.tsx', 'w') as f:
+    f.write(content)
+

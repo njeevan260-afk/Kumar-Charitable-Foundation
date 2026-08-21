@@ -73,6 +73,7 @@ export interface NotificationItem {
 }
 
 export interface StudentProject {
+  is_featured?: boolean;
   id: string;
   user_id: string;
   title: string;
@@ -104,6 +105,7 @@ export interface StudentSkillUpdate {
 }
 
 export interface StudentProjectDocument {
+  project_id?: string;
   id: string;
   user_id: string;
   title: string;

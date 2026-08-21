@@ -49,18 +49,16 @@ const ALLOWED_DOC_TYPES = [
 const MAX_DOC_SIZE = 5 * 1024 * 1024; // 5 MB
 
 export const StudentLogsTab: React.FC = () => {
-  const [activeSectionView, setActiveSectionView] = useState<'all' | 'notes' | 'skills' | 'project-docs' | 'learning-process'>('all');
+  const [activeSectionView, setActiveSectionView] = useState<'all' | 'notes' | 'skills' | 'learning-process'>('all');
 
   const [meetingNotes, setMeetingNotes] = useState<StudentMeetingNote[]>([]);
   const [skillUpdates, setSkillUpdates] = useState<StudentSkillUpdate[]>([]);
-  const [projectDocs, setProjectDocs] = useState<StudentProjectDocument[]>([]);
   const [learningNotes, setLearningNotes] = useState<StudentLearningProcessNote[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modal visibility states
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [showSkillModal, setShowSkillModal] = useState(false);
-  const [showDocModal, setShowDocModal] = useState(false);
   const [showLearningModal, setShowLearningModal] = useState(false);
 
   // Preview modal states
@@ -79,8 +77,6 @@ export const StudentLogsTab: React.FC = () => {
   // Form states
   const [noteForm, setNoteForm] = useState({ meeting_topic: '', notes: '', learnt: '', feedback: '' });
   const [skillForm, setSkillForm] = useState({ skill_name: '', description: '' });
-  const [docForm, setDocForm] = useState({ title: '', description: '' });
-  const [selectedDocFile, setSelectedDocFile] = useState<File | null>(null);
   const [learningForm, setLearningForm] = useState({ title: '', notes: '', challenges: '', key_milestones: '' });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -98,16 +94,14 @@ export const StudentLogsTab: React.FC = () => {
     }
 
     try {
-      const [notesRes, skillsRes, docsRes, learnRes] = await Promise.all([
+      const [notesRes, skillsRes, learnRes] = await Promise.all([
         supabase.from('student_meeting_notes').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }),
         supabase.from('student_skills_updates').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }),
-        supabase.from('student_project_documents').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }),
-        supabase.from('student_learning_process_notes').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }),
+        supabase.from('student_learning_process_notes').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false })
       ]);
 
       if (notesRes.data) setMeetingNotes(notesRes.data as StudentMeetingNote[]);
       if (skillsRes.data) setSkillUpdates(skillsRes.data as StudentSkillUpdate[]);
-      if (docsRes.data) setProjectDocs(docsRes.data as StudentProjectDocument[]);
       if (learnRes.data) setLearningNotes(learnRes.data as StudentLearningProcessNote[]);
     } catch (e) {
       console.warn('Failed to fetch logs:', e);
@@ -230,140 +224,7 @@ export const StudentLogsTab: React.FC = () => {
     }
   };
 
-  const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setErrorMsg(null);
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const lowerName = file.name.toLowerCase();
 
-      const isValidExt = [
-        '.pdf',
-        '.docx',
-        '.doc',
-        '.txt',
-        '.md',
-        '.rtf',
-        '.jpg',
-        '.jpeg',
-        '.png'
-      ].some((ext) => lowerName.endsWith(ext));
-
-      const isPermittedType = ALLOWED_DOC_TYPES.includes(file.type) || file.type === 'application/octet-stream' || !file.type;
-
-      if (!isValidExt && !isPermittedType) {
-        setErrorMsg('Invalid file format. Please upload a Word document, PDF, or text document.');
-        setSelectedDocFile(null);
-        return;
-      }
-
-      if (file.size > MAX_DOC_SIZE) {
-        setErrorMsg(`File size (${(file.size / (1024 * 1024)).toFixed(1)} MB) exceeds the 5 MB limit.`);
-        setSelectedDocFile(null);
-        return;
-      }
-
-      setSelectedDocFile(file);
-    }
-  };
-
-  const handleUploadProjectDoc = async () => {
-    setErrorMsg(null);
-    if (!docForm.title.trim()) {
-      setErrorMsg('Please enter a Document / Project Title.');
-      return;
-    }
-    if (!docForm.description.trim()) {
-      setErrorMsg('Please describe what you are uploading (e.g. Prompt document, architecture notes).');
-      return;
-    }
-    if (!selectedDocFile) {
-      setErrorMsg('Please select a file to upload (.docx, .doc, .pdf, or .txt).');
-      return;
-    }
-
-    setSubmitting(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setSubmitting(false);
-      return;
-    }
-
-    const studentId = session.user.id;
-    const now = new Date().toISOString();
-    const docId = generateUUID();
-    const cleanFileName = selectedDocFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const storagePath = `project_docs/${studentId}/${Date.now()}_${cleanFileName}`;
-
-    try {
-      const { error: uploadError } = await supabase.storage
-        .from('student-documents')
-        .upload(storagePath, selectedDocFile, {
-          cacheControl: '3600',
-          upsert: true,
-        });
-
-      if (uploadError) {
-        throw new Error(`Storage upload failed: ${uploadError.message}`);
-      }
-
-      const newDocPayload: StudentProjectDocument = {
-        id: docId,
-        user_id: studentId,
-        title: docForm.title.trim(),
-        description: docForm.description.trim(),
-        file_path: storagePath,
-        file_name: selectedDocFile.name,
-        file_type: selectedDocFile.type || 'application/octet-stream',
-        file_size: selectedDocFile.size,
-        created_at: now,
-      };
-
-      const { data, error: dbError } = await supabase
-        .from('student_project_documents')
-        .insert([newDocPayload])
-        .select()
-        .single();
-
-      if (dbError) {
-        if (dbError.code === '42P01') {
-          console.warn("Table 'student_project_documents' pending creation in Supabase.");
-        } else {
-          throw dbError;
-        }
-      }
-
-      setProjectDocs([data || newDocPayload, ...projectDocs]);
-      setShowDocModal(false);
-      setDocForm({ title: '', description: '' });
-      setSelectedDocFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      setSuccessMsg('Project document uploaded successfully!');
-      setTimeout(() => setSuccessMsg(null), 3000);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to upload project document');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDeleteProjectDoc = async (id: string, filePath: string) => {
-    if (!window.confirm('Are you sure you want to delete this project document?')) return;
-    try {
-      if (filePath) {
-        const cleanPath = extractStoragePath(filePath);
-        if (cleanPath && !cleanPath.startsWith('http')) {
-          await supabase.storage.from('student-documents').remove([cleanPath]);
-        }
-      }
-
-      await supabase.from('student_project_documents').delete().eq('id', id);
-      setProjectDocs(projectDocs.filter((d) => d.id !== id));
-      setSuccessMsg('Document deleted.');
-      setTimeout(() => setSuccessMsg(null), 3000);
-    } catch (err: any) {
-      console.warn('Error deleting doc:', err);
-    }
-  };
 
   const handleSaveLearningNote = async () => {
     setErrorMsg(null);
@@ -488,7 +349,7 @@ export const StudentLogsTab: React.FC = () => {
                 : 'bg-[#F8F5F0] text-[#6B5A4D] hover:bg-[#EFE9DF]'
             }`}
           >
-            All Sections ({meetingNotes.length + skillUpdates.length + projectDocs.length + learningNotes.length})
+            All Sections ({meetingNotes.length + skillUpdates.length + learningNotes.length})
           </button>
           <button type="button"
             onClick={() => setActiveSectionView('notes')}
@@ -512,17 +373,7 @@ export const StudentLogsTab: React.FC = () => {
             <Sparkles className="w-4 h-4 text-emerald-600" />
             Skills & Tech ({skillUpdates.length})
           </button>
-          <button type="button"
-            onClick={() => setActiveSectionView('project-docs')}
-            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSectionView === 'project-docs'
-                ? 'bg-[#1E3A8A] text-white shadow-sm'
-                : 'bg-[#F8F5F0] text-[#6B5A4D] hover:bg-[#EFE9DF]'
-            }`}
-          >
-            <FileCode className="w-4 h-4 text-blue-600" />
-            Project & Prompt Docs ({projectDocs.length})
-          </button>
+          
           <button type="button"
             onClick={() => setActiveSectionView('learning-process')}
             className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
@@ -538,13 +389,7 @@ export const StudentLogsTab: React.FC = () => {
 
         {/* Quick Add Buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button"
-            onClick={() => setShowDocModal(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFDF8] border border-[#1E3A8A] text-[#1E3A8A] hover:bg-blue-50 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-          >
-            <UploadCloud className="w-3.5 h-3.5" />
-            Upload Project Doc
-          </button>
+          
           <button type="button"
             onClick={() => setShowLearningModal(true)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFDF8] border border-[#1E3A8A] text-[#1E3A8A] hover:bg-blue-50 rounded-xl text-xs font-bold transition-colors cursor-pointer"
@@ -677,126 +522,6 @@ export const StudentLogsTab: React.FC = () => {
                       )}
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* SECTION 3: Project Documents & Prompt Artifacts */}
-          {(activeSectionView === 'all' || activeSectionView === 'project-docs') && (
-            <div className="bg-white rounded-3xl border border-[#E8DED0] p-6 sm:p-8 shadow-sm space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#F3EFE9]">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#1E3A8A] flex items-center justify-center">
-                      <FileCode className="w-5 h-5" />
-                    </div>
-                    <h3 className="text-xl font-bold text-[#1F2937]">
-                      Project Documents & Prompt Files
-                    </h3>
-                  </div>
-                  <p className="text-xs sm:text-sm text-[#737373] mt-1">
-                    Upload project documentation, technical specs, and <strong>Prompt Documents</strong> detailing all the prompts used to build your projects (.docx, .doc, .pdf, .txt).
-                  </p>
-                </div>
-
-                <button type="button"
-                  onClick={() => setShowDocModal(true)}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1E3A8A] hover:bg-[#152C69] text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-xs cursor-pointer"
-                >
-                  <UploadCloud className="w-4 h-4" />
-                  Upload Project / Prompt Doc
-                </button>
-              </div>
-
-              {projectDocs.length === 0 ? (
-                <div className="text-center py-12 px-4 bg-[#F8F5F0] rounded-2xl border border-dashed border-[#D1D5DB]">
-                  <FileText className="w-10 h-10 text-[#A09080] mx-auto mb-2 opacity-50" />
-                  <h4 className="text-sm font-bold text-[#1F2937]">No Project Documents Uploaded Yet</h4>
-                  <p className="text-xs text-[#737373] max-w-md mx-auto mt-1">
-                    Share your Prompt Document (Word .docx or PDF listing all AI prompts used), architecture guides, or project documentation so mentors and admins can review your workflow.
-                  </p>
-                  <button type="button"
-                    onClick={() => setShowDocModal(true)}
-                    className="mt-4 px-4 py-2 bg-[#1E3A8A] text-white rounded-xl text-xs font-bold hover:bg-[#152C69] transition-colors cursor-pointer"
-                  >
-                    Upload First Document
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {projectDocs.map((doc) => {
-                    const badge = getDocBadge(doc.file_name);
-                    return (
-                      <div
-                        key={doc.id}
-                        className="bg-[#FFFDF8] rounded-2xl border border-[#E8DED0] p-5 hover:shadow-md transition-all flex flex-col justify-between"
-                      >
-                        <div className="space-y-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${badge.color}`}>
-                                {badge.label}
-                              </span>
-                              {doc.file_size ? (
-                                <span className="text-[10px] text-[#737373] font-semibold bg-[#F3EFE9] px-2 py-0.5 rounded">
-                                  {formatFileSize(doc.file_size)}
-                                </span>
-                              ) : null}
-                            </div>
-                            <span className="text-[11px] text-[#737373] flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-[#A09080]" />
-                              {new Date(doc.created_at).toLocaleDateString()}
-                            </span>
-                          </div>
-
-                          <div>
-                            <h4 className="text-base font-bold text-[#1F2937] leading-snug">{doc.title}</h4>
-                            <p className="text-xs text-[#1E3A8A] font-medium truncate mt-0.5">{doc.file_name}</p>
-                          </div>
-
-                          <div className="bg-[#F8F5F0]/70 rounded-xl p-3.5 border border-[#E8DED0]/60">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#6B5A4D] block mb-1">
-                              Uploaded Document Details / Prompts Summary:
-                            </span>
-                            <p className="text-xs text-[#4B5563] whitespace-pre-wrap leading-relaxed line-clamp-4">
-                              {doc.description}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between pt-4 mt-4 border-t border-[#F3EFE9]">
-                          <div className="flex items-center gap-2">
-                            <button type="button"
-                              onClick={() => setPreviewDoc(doc)}
-                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1E3A8A] hover:underline cursor-pointer"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              Preview / Open
-                            </button>
-                            <a
-                              href={doc.file_path}
-                              download={doc.file_name}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-xs font-semibold text-[#6B5A4D] hover:text-[#1F2937] px-2 py-1 bg-white border border-[#E8DED0] rounded-lg transition-colors cursor-pointer"
-                            >
-                              <Download className="w-3 h-3" />
-                              Download
-                            </a>
-                          </div>
-
-                          <button type="button"
-                            onClick={() => handleDeleteProjectDoc(doc.id, doc.file_path)}
-                            className="p-1.5 text-[#737373] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                            title="Delete file"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
                 </div>
               )}
             </div>
@@ -1061,233 +786,6 @@ export const StudentLogsTab: React.FC = () => {
                   className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-white bg-[#1E3A8A] hover:bg-[#152C69] rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save Skill
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* MODAL 3: Project Document & Prompt Upload Modal */}
-      <AnimatePresence>
-        {showDocModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1F2937]/50 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-[24px] shadow-2xl w-full max-w-xl overflow-hidden border border-[#E8DED0] flex flex-col max-h-[90vh]"
-            >
-              <div className="flex-shrink-0 flex items-center justify-between p-5 sm:p-6 border-b border-[#E8DED0] bg-[#F8F5F0]">
-                <div className="flex items-center gap-2">
-                  <UploadCloud className="w-5 h-5 text-[#1E3A8A]" />
-                  <h3 className="text-lg font-bold text-[#1F2937]">Upload Project & Prompt Document</h3>
-                </div>
-                <button type="button"
-                  onClick={() => {
-                    setShowDocModal(false);
-                    setErrorMsg(null);
-                  }}
-                  className="text-[#6B7280] hover:text-[#1F2937] transition-colors cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
-                {errorMsg && (
-                  <div className="p-3 bg-red-50 text-red-600 text-sm font-medium rounded-xl border border-red-100 flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                    <span>{errorMsg}</span>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-xs font-bold uppercase text-[#6B5A4D] tracking-wider mb-1.5">
-                    Document Title / Project Association *
-                  </label>
-                  <input
-                    type="text"
-                    value={docForm.title}
-                    onChange={(e) => setDocForm({ ...docForm, title: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-white border border-[#D1D5DB] rounded-xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent outline-none text-sm text-[#1F2937]"
-                    placeholder="e.g. AI Career Coach - Prompt Document & Workflow"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase text-[#6B5A4D] tracking-wider mb-1.5">
-                    Description & Contents Breakdown *
-                  </label>
-                  <p className="text-xs text-[#737373] mb-1.5">
-                    Mention what you are uploading (e.g., prompt document listing all prompts used in creating this project, system prompts, architecture specs, research findings).
-                  </p>
-                  <textarea
-                    value={docForm.description}
-                    onChange={(e) => setDocForm({ ...docForm, description: e.target.value })}
-                    rows={4}
-                    className="w-full px-4 py-2.5 bg-white border border-[#D1D5DB] rounded-xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent outline-none text-sm text-[#1F2937] resize-none"
-                    placeholder="e.g. This document contains the full list of prompt templates, few-shot examples, and chain-of-thought instructions used to build the automated mentor assistant..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase text-[#6B5A4D] tracking-wider mb-1.5">
-                    Select File (.docx, .doc, .pdf, .txt, up to 5MB) *
-                  </label>
-                  <div className="border-2 border-dashed border-[#D1D5DB] hover:border-[#1E3A8A] rounded-2xl p-6 text-center bg-[#FFFDF8] transition-colors cursor-pointer relative">
-                    <input
-                      id="log-file-upload"
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".docx,.doc,.pdf,.txt,.md,.rtf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
-                      onChange={handleFileSelection}
-                      onClick={(e) => { e.currentTarget.value = ''; }}
-                      className="hidden"
-                    />
-                    <label htmlFor="log-file-upload" className="flex flex-col items-center w-full h-full cursor-pointer">
-                      <FileCheck className="w-10 h-10 text-[#1E3A8A] mb-2" />
-                      <p className="text-sm font-semibold text-[#1F2937]">
-                        {selectedDocFile ? selectedDocFile.name : 'Click to select or drag & drop file'}
-                      </p>
-                      <p className="text-xs text-[#737373] mt-1">
-                        {selectedDocFile
-                          ? `Size: ${formatFileSize(selectedDocFile.size)}`
-                          : 'Supports Word (.docx, .doc), PDF (.pdf), Text (.txt, .md)'}
-                      </p>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex-shrink-0 p-5 sm:p-6 border-t border-[#E8DED0] bg-[#F9FAFB] flex flex-col sm:flex-row justify-end gap-3">
-                <button type="button"
-                  onClick={() => {
-                    setShowDocModal(false);
-                    setErrorMsg(null);
-                  }}
-                  className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-[#4B5563] hover:text-[#111827] hover:bg-[#E5E7EB] rounded-xl transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button type="button"
-                  onClick={handleUploadProjectDoc}
-                  disabled={submitting || !selectedDocFile}
-                  className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-white bg-[#1E3A8A] hover:bg-[#152C69] rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-                >
-                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
-                  {submitting ? 'Uploading...' : 'Upload Document'}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* MODAL 4: Overall Learning Process Note Modal */}
-      <AnimatePresence>
-        {showLearningModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1F2937]/50 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-[24px] shadow-2xl w-full max-w-xl overflow-hidden border border-[#E8DED0] flex flex-col max-h-[90vh]"
-            >
-              <div className="flex-shrink-0 flex items-center justify-between p-5 sm:p-6 border-b border-[#E8DED0] bg-[#F8F5F0]">
-                <div className="flex items-center gap-2">
-                  <Compass className="w-5 h-5 text-[#1E3A8A]" />
-                  <h3 className="text-lg font-bold text-[#1F2937]">Add Learning Process Note</h3>
-                </div>
-                <button type="button"
-                  onClick={() => {
-                    setShowLearningModal(false);
-                    setErrorMsg(null);
-                  }}
-                  className="text-[#6B7280] hover:text-[#1F2937] transition-colors cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
-                {errorMsg && (
-                  <div className="p-3 bg-red-50 text-red-600 text-sm font-medium rounded-xl border border-red-100 flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                    <span>{errorMsg}</span>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-xs font-bold uppercase text-[#6B5A4D] tracking-wider mb-1.5">
-                    Reflection Title / Focus Area *
-                  </label>
-                  <input
-                    type="text"
-                    value={learningForm.title}
-                    onChange={(e) => setLearningForm({ ...learningForm, title: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-white border border-[#D1D5DB] rounded-xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent outline-none text-sm text-[#1F2937]"
-                    placeholder="e.g. Navigating Asynchronous Architecture & State Persistence"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase text-[#6B5A4D] tracking-wider mb-1.5">
-                    Learning Process & Study Methodology *
-                  </label>
-                  <textarea
-                    value={learningForm.notes}
-                    onChange={(e) => setLearningForm({ ...learningForm, notes: e.target.value })}
-                    rows={4}
-                    className="w-full px-4 py-2.5 bg-white border border-[#D1D5DB] rounded-xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent outline-none text-sm text-[#1F2937] resize-none"
-                    placeholder="Reflect on how you approached learning: reading technical docs, structuring problem breakdown, building prototypes, debugging strategies..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase text-[#6B5A4D] tracking-wider mb-1.5">
-                    Challenges & Roadblocks Overcome (Optional)
-                  </label>
-                  <textarea
-                    value={learningForm.challenges}
-                    onChange={(e) => setLearningForm({ ...learningForm, challenges: e.target.value })}
-                    rows={2}
-                    className="w-full px-4 py-2.5 bg-white border border-[#D1D5DB] rounded-xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent outline-none text-sm text-[#1F2937] resize-none"
-                    placeholder="What was tricky and how did you resolve it?"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase text-[#6B5A4D] tracking-wider mb-1.5">
-                    Milestones & Next Targets (Optional)
-                  </label>
-                  <textarea
-                    value={learningForm.key_milestones}
-                    onChange={(e) => setLearningForm({ ...learningForm, key_milestones: e.target.value })}
-                    rows={2}
-                    className="w-full px-4 py-2.5 bg-white border border-[#D1D5DB] rounded-xl focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent outline-none text-sm text-[#1F2937] resize-none"
-                    placeholder="What is the next capability or project milestone you aim to achieve?"
-                  />
-                </div>
-              </div>
-
-              <div className="flex-shrink-0 p-5 sm:p-6 border-t border-[#E8DED0] bg-[#F9FAFB] flex flex-col sm:flex-row justify-end gap-3">
-                <button type="button"
-                  onClick={() => {
-                    setShowLearningModal(false);
-                    setErrorMsg(null);
-                  }}
-                  className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-[#4B5563] hover:text-[#111827] hover:bg-[#E5E7EB] rounded-xl transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button type="button"
-                  onClick={handleSaveLearningNote}
-                  disabled={submitting}
-                  className="w-full sm:w-auto px-5 py-2.5 text-sm font-semibold text-white bg-[#1E3A8A] hover:bg-[#152C69] rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-                >
-                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  {submitting ? 'Saving...' : 'Save Learning Reflection'}
                 </button>
               </div>
             </motion.div>
